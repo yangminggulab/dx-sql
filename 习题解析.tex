@@ -1,0 +1,6 @@
+\chapter{第一章基础知识}
+\texttt{LeetCode 1757. 可回收且低脂的产品：}本题要求从 \texttt{Products} 表中筛选出同时满足低脂与可回收条件的产品。标准的 SQL 语句如下：
+\begin{lstlisting}[language=SQL]
+SELECT product_id FROM Products WHERE low_fats = 'Y' AND recyclable = 'Y';
+\end{lstlisting}
+从数学视角来看，这等价于在一个由行记录组成的全集 $U$ 中，寻找满足谓词逻辑 $P(x) \land Q(x)$ 的元素集合，其中 $P(x)$ 定义为 $x.low\_fats = \text{'Y'}$，$Q(x)$ 定义为 $x.recyclable = \text{'Y'}$。该过程在集合论中对应子集的交集运算 $A \cap B$，并最终通过 \texttt{SELECT} 操作将结果映射（投影）到 \texttt{product_id} 维度。在 Overleaf 中编写此类笔记时需注意，SQL 的执行逻辑顺序（\texttt{FROM} $\rightarrow$ \texttt{WHERE} $\rightarrow$ \texttt{SELECT}）与数学中先定义论域、再进行条件过滤、最后提取属性的步骤逻辑高度契合。此外，SQL 中的字符串字面量必须使用单引号包围，以区别于数据库的列名或表名标识符。这种将数据库操作转化为集合运算的思维方式，是理解关系型数据库底层原理的关键。

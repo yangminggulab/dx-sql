@@ -1,0 +1,252 @@
+\chapter{数据库基础语法}
+SQL 是 Structured Query Language 的缩写，中文翻译为 “结构化查询语言
+\begin{definition}[SELECT 语句]
+在 SQL 中，\textbf{SELECT} 语句是用于从数据库表中检索数据的核心指令。其基本语法结构由以下两个核心部分组成：
+\begin{itemize}
+\item \textbf{选什么 (What to select)}：紧跟在 \texttt{SELECT} 关键字之后，用于指定需要查询的列名（字段）。
+\item \textbf{从哪里选 (From where to select)}：紧跟在 \texttt{FROM} 关键字之后，用于指定数据所在的表名。
+\end{itemize}
+\end{definition}
+\begin{dxtips}
+    如果要选择多个关键字每一个关键字都要用，隔开。如果需要选择表中的所有列，可以使用通配符 \texttt{*}。
+    
+\end{dxtips}
+\begin{dxtips}
+   如果要选择名字不重复的就用distinct distinct是形容词所以放在要选什么的前面.distinct 对他后面的都有效而不是只是对他后面一个位置的有效。必须紧紧跟着select 
+\end{dxtips}
+\begin{dxtips}
+    不同的系统选择前五行语法不一样，甲骨文的是where rollnum小于等于5。如果想从要6到10行就 limit 5 offset 5 offset是偏离的意思也就偏离5的定语是从1偏离5也就是从第6个开始，他前面的就是还需要多少行。1到10有10个数，1到5有五个数所以5-1需要再加1
+\end{dxtips}
+\begin{note}
+    1. 物理位置 vs. 逻辑索引在 SQL 的底层逻辑里，它不把第一行看作“1”，而是看作距离起点的偏移量（Offset）为 0 的位置。2. 为什么你的“偏离 5”等于“第 6 行”？这就是你刚才理解最神的地方：如果你想从第 6 行开始看，你的 Offset（偏离量） 必须是 5。因为：$0 (\text{起点}) + 5 (\text{偏离}) = 5 (\text{索引})$。而索引为 5 的那一行，在人类数数时正好是第 6 个。
+\end{note}
+\begin{dxtips}
+    三种注释 --行内注释，
+    # 整行注释 
+    /* */
+\end{dxtips}
+\begin{definition}[排序]
+    order by必须是最后的字句，
+
+核心逻辑拆解
+
+数据隔离：SELECT 决定了最后要把哪些“列”展示在屏幕上给用户看 [cite: 5, 2026-03-07]。
+
+排序依据：ORDER BY 决定了数据库在后台检索数据时，用哪根“轴”来进行对比排序 [cite: 5, 2026-03-07]。
+
+合法性：只要这一列存在于你 FROM 后面的那张表（或关联表）里，数据库就能抓到它来进行排序，即便你并没有要求显示它
+\end{definition}
+\begin{note}
+    \textbf{提示：通过非选择列进行排序} \\
+    通常，\pythoninline{ORDER BY} 子句中使用的列将是为显示而选择的列。但是，实际上并不一定要这样，用非检索的列排序数据是完全合法的。
+\end{note}
+
+\begin{lstlisting}[language=SQL, title=多列排序示例]
+/* 下面的代码检索 3 个列，并按其中两个列对结果进行排序——首先按价格，然后按名称排序。 */
+SELECT prod_id, prod_price, prod_name
+FROM Products
+ORDER BY prod_price, prod_name;
+\end{lstlisting}
+\begin{lstlisting}[language=SQL, caption={使用列位置排序}]
+SELECT prod_id, prod_price, prod_name
+FROM Products
+ORDER BY 2, 3;
+\end{lstlisting}
+这个就是先按照price排序再按照name排序也就是先价格再首字母。也就是按照name的首字母排序。用这个方法局限的是只能用select里面的列作为排序的依据。desc可以按照降序排列他的作用只在他前面的东西。
+\begin{definition}[where 用来过滤数据]
+   where后面跟着限定条件比如price=3.5；记住order by得写在他的后面 
+\end{definition}
+\begin{definition}[between]
+    between和where要一起用 where   between 爱你的、
+\end{definition}
+\begin{definition}[or+and+In]
+    where+and可以进行高级筛选可以一个where——多个and，or是或。and的优先级比or高如果需要先进行or判断必须加括号。有and 有 or用括号。In（，）需要有括号每两个不同的用，隔开。也是where in。not否定跟着后面的条件在条件复杂的时候尤为有效
+\end{definition}
+\begin{dxtips}
+    通配符用来匹配值一部分的特殊字符，比如说含有bean bag，like得配合着where用，立刻后面跟着 'fish%'就是搜索以fish开头的。如果是想含有就算就用'%bag%'
+    'F%y'这个是搜索F开头y结尾的。百分号后面也可以跟着网址。like不会匹配null
+\end{dxtips}
+\begin{note}
+下划线 (\_) vs 百分号 (\%)
+
+\begin{itemize}
+    \item \% 是“贪婪”的：它能匹配 0 个、1 个或无数个字符。比如 \texttt{'\% inch'} 能匹配 \texttt{8 inch}，也能匹配 \texttt{12 inch}。
+    \item \_ 是“死板”的：一个下划线就代表一个占位符。
+\end{itemize}
+
+看图 3 中的代码：\texttt{LIKE '\_\_ inch teddy bear'}（注意这里是两个下划线）。
+
+\begin{homework}
+    \begin{enumerate}
+    
+   
+    \item 为什么 12 inch 和 18 inch 能匹配？ \\
+    因为 \texttt{12} 是两个字符，刚好填满了那两个下划线的坑。
+    
+    \item 为什么 8 inch 匹配不到？ \\
+    因为 \texttt{8} 只有一个字符。如果你用了两个下划线 \texttt{\_\_}，SQL 就会在心里数数：“一、二... 诶？\texttt{8} 后面没字符了，但我这里要求必须有两个字符才能过关”，于是就把它剔除了。
+     \end{enumerate}
+\end{homework}
+\end{note}
+\begin{dxtips}[and后面还需要写一遍 判断主体 prod_desc因为这个位置不是一定是desc还可以是name]
+    select prod_name,prod_desc from Products where prod_desc like '%toy%'and prod_desc like '%carrots%'
+    '%toy%carrots%'就是必须按照先toy后carrot才能被检索出来
+\end{dxtips}
+\section{计算字符}
+\textbf{输入}
+\begin{lstlisting}[language=SQL]
+SELECT prod_id,
+       quantity,
+       item_price,
+       quantity*item_price AS expanded_price
+FROM OrderItems
+WHERE order_num = 20008;
+\end{lstlisting}
+
+\textbf{输出}
+\begin{center}
+    \begin{tabular}{llll}
+        \texttt{prod\_id} & \texttt{quantity} & \texttt{item\_price} & \texttt{expanded\_price} \\
+        \hline
+        RGAN01 & 5 & 4.9900 & 24.9500 \\
+        BR03   & 5 & 11.9900 & 59.9500 \\
+        BNBG01 & 10 & 3.4900 & 34.9000 \\
+        BNBG02 & 10 & 3.4900 & 34.9000 \\
+        BNBG03 & 10 & 3.4900 & 34.9000 \\
+    \end{tabular}
+\end{center}
+\begin{dxtips}
+  如何进行加减乘除，把运算完的起一个名字即可然后就可以搜索了  
+\end{dxtips}
+section{计算字符}
+计算字符涉及到了合并列等等操作要紧跟着select
+
+
+    \textbf{输入：}
+\begin{lstlisting}[language=SQL]
+SELECT vend_name + ' (' + vend_country + ')'
+FROM Vendors
+ORDER BY vend_name;
+\end{lstlisting}
+
+    \textbf{输出：}
+    \begin{center}
+    \begin{tabular}{ll}
+    \hline
+    Bear Emporium & (USA \ \ \ \ \ \ \ ) \\
+    Bears R Us & (USA \ \ \ \ \ \ \ ) \\
+    Doll House Inc. & (USA \ \ \ \ \ \ \ ) \\
+    Fun and Games & (England \ \ \ ) \\
+    Furball Inc. & (USA \ \ \ \ \ \ \ ) \\
+    Jouets et ours & (France \ \ \ \ ) \\
+    \hline
+    \end{tabular}
+    \end{center}
+
+\begin{dxtips}
+    +可以用来拼接'('是一个整体
+\end{dxtips}
+ \textbf{输入}
+\begin{lstlisting}[language=SQL]
+SELECT RTRIM(vend_name) + ' (' + RTRIM(vend_country) + ')'
+FROM Vendors
+ORDER BY vend_name;
+\end{lstlisting}
+
+\textbf{输出}
+\begin{center}
+    \begin{minipage}{0.8\textwidth}
+        Bear Emporium (USA) \\
+        Bears R Us (USA) \\
+        Doll House Inc. (USA) \\
+        Fun and Games (England) \\
+        Furball Inc. (USA) \\
+        Jouets et ours (France)
+    \end{minipage}
+\end{center}
+\begin{dxtips}
+    rtrim函数可以去掉所有右边空格，比如这里去掉的是vend_name右边所有的空格。RT右边+rim边缘同样左边的空格用Lf 全部空格用T
+\end{dxtips}
+\textbf{输入}
+\begin{lstlisting}[language=SQL]
+SELECT RTRIM(vend_name) + ' (' + RTRIM(vend_country) + ')'
+       AS vend_title
+FROM Vendors
+ORDER BY vend_name;
+\end{lstlisting}
+
+\textbf{输出}
+\begin{center}
+    \begin{minipage}{0.8\textwidth}
+        \texttt{vend\_title} \\
+        \rule{\textwidth}{0.4pt} \\
+        Bear Emporium (USA) \\
+        Bears R Us (USA) \\
+        Doll House Inc. (USA) \\
+        Fun and Games (England) \\
+        Furball Inc. (USA) \\
+        Jouets et ours (France)
+    \end{minipage}
+\end{center}
+\begin{dxtips}
+    as赋予了新的列一个名字也就是合成的这个列也有名字了可以select了
+\end{dxtips}
+\section{函数}
+\begin{dxtips}
+    upper函数会让所有字母都大写括号里面就是大写的对象
+\end{dxtips}
+
+\begin{table}[htbp]
+    \centering
+    \caption{常用的文本处理函数}
+    \begin{tabular}{lp{8cm}}
+        \toprule
+        \multicolumn{1}{c}{\textbf{函 数}} & \multicolumn{1}{c}{\textbf{说 明}} \\
+        \midrule
+        LEFT()（或使用子字符串函数） & 返回字符串左边的字符 \\
+        LENGTH()（也使用DATALENGTH()或LEN()） & 返回字符串的长度 \\
+        LOWER() & 将字符串转换为小写 \\
+        LTRIM() & 去掉字符串左边的空格 \\
+        RIGHT()（或使用子字符串函数） & 返回字符串右边的字符 \\
+        RTRIM() & 去掉字符串右边的空格 \\
+        SUBSTR()或SUBSTRING() & 提取字符串的组成部分（见表8-1） \\
+        SOUNDEX() & 返回字符串的SOUNDEX值 \\
+        UPPER() & 将字符串转换为大写 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{dxtips}
+soundex()方便寻找拼写错误的，但是发生想的 比如如果录入的时候Michel打错了大成Michelle了那么就可以在where后面加上判断条件\(\text{where soundex(vend\_name)=soundex(Michel)}\)
+\end{dxtips}
+
+字母拼起来不能用——要用concat
+
+\begin{dxtips}
+    \texttt{select cust\_id,cust\_name, upper(CONCAT (left (cust\_contact,2),left(cust\_city,3))) as user\_logn from Customers}
+\end{dxtips}
+
+\begin{lstlisting}[language=SQL]
+SELECT AVG(prod_price) AS avg_price
+FROM Products;
+\end{lstlisting}
+
+\[
+\text{输出：}
+\]
+
+\begin{lstlisting}
+avg_price
+---------
+6.823333
+\end{lstlisting}
+\begin{dxtips}
+    记住每一次运算完都要给新结果一个名字。avg只能运算单列会忽略null值，\begin{itemize}
+\item 使用 \texttt{COUNT(*)} 对表中行的数目进行计数，不管表列中包含的是空值（NULL）还是非空值。
+\item 使用 \texttt{COUNT(column)} 对特定列中具有值的行进行计数，忽略 NULL 值。
+\end{itemize}
+\end{dxtips}
+\begin{dxtips}
+    group by是和where配合操作目的是对一类目标形成筛选和操作。group
+by在where 后面在order by前面
+\end{dxtips}
