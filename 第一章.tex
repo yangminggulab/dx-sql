@@ -250,3 +250,82 @@ avg_price
     group by是和where配合操作目的是对一类目标形成筛选和操作。group
 by在where 后面在order by前面
 \end{dxtips}
+\begin{note}
+\textbf{GROUP BY 的使用注意事项：}
+\begin{itemize}
+    \item \texttt{GROUP BY} 子句中列出的每一项都必须是检索列或有效的表达式，但\textbf{不能是聚集函数}。也就是说，\texttt{GROUP BY} 后面应当写“具体的分组依据”，而不能写 \texttt{COUNT(*)}、\texttt{SUM(price)} 这类分组之后才得到的结果。
+
+    \item 如果在 \texttt{SELECT} 中使用了表达式，例如 \texttt{YEAR(order\_date)}，那么在 \texttt{GROUP BY} 中也必须写相同的表达式，而不能只按原列分组。
+
+    \item 在很多 SQL 实现中，\texttt{GROUP BY} 中不能直接使用 \texttt{SELECT} 子句里定义的别名，因此通常应写原表达式，而不要写别名。
+
+    \item 大多数 SQL 实现不允许对长度可变的大字段进行分组，例如文本型字段或备注型字段。
+\end{itemize}
+\end{note}
+\begin{note}
+\textbf{WHERE 与 HAVING 的区别：}
+\begin{itemize}
+    \item \texttt{WHERE} 用于在分组之前对原始记录进行筛选，决定哪些行能够进入分组，因此 \texttt{WHERE} 是“管行”的。
+    \item \texttt{HAVING} 用于在分组之后对分组结果进行筛选，决定哪些分组能够保留下来，因此 \texttt{HAVING} 是“管组”的。
+    \item 一般来说，\texttt{WHERE} 中不能使用聚集函数，而 \texttt{HAVING} 中可以使用聚集函数。
+\end{itemize}
+\end{note}
+
+\begin{example}
+下面的 SQL 语句先筛选工资大于 5000 的员工，再按部门编号分组，最后只保留人数不少于 3 的部门：
+\begin{lstlisting}[language=SQL]
+SELECT dept_id, COUNT(*)
+FROM employee
+WHERE salary > 5000
+GROUP BY dept_id
+HAVING COUNT(*) >= 3;
+\end{lstlisting}
+\end{example}
+
+\begin{note}
+上述语句的执行过程可以理解为：
+\begin{itemize}
+    \item 先由 \texttt{WHERE salary > 5000} 筛选出工资大于 5000 的员工记录；
+    \item 再按照 \texttt{dept\_id} 对这些记录进行分组；
+    \item 最后由 \texttt{HAVING COUNT(*) >= 3} 保留员工人数不少于 3 的那些部门分组。
+\end{itemize}
+\end{note}
+\begin{dxtips}
+    聚集函数如果和 GROUP BY 一起出现，默认就是“对每个组聚集”。所以聚类函数(aggregate function)count all默认就是count刚分好的组。
+\end{dxtips}
+\begin{note}
+虽然 \texttt{SELECT} 子句写在最前面，但 SQL 查询在逻辑上并不是先执行 \texttt{SELECT}。一般可理解为按如下顺序执行：
+\[
+\texttt{FROM} \;\to\; \texttt{WHERE} \;\to\; \texttt{GROUP BY} \;\to\; \texttt{HAVING} \;\to\; \texttt{SELECT} \;\to\; \texttt{ORDER BY}.
+\]
+因此，\texttt{COUNT(*)} 虽然写在 \texttt{SELECT} 中，但如果语句里有 \texttt{GROUP BY}，它实际统计的是每个分组中的行数。
+\end{note}
+\begin{table}[htbp]
+    \centering
+    \caption{\texttt{ORDER BY} 与 \texttt{GROUP BY} 的区别}
+    \begin{tabular}{p{5.2cm}p{5.2cm}}
+        \toprule
+        \centering \texttt{ORDER BY} & \centering \texttt{GROUP BY} \tabularnewline
+        \midrule
+        对产生的输出排序 & 对行分组，但输出可能不是分组的顺序 \\[6pt]
+        任意列都可以使用（甚至非选择的列也可以使用） & 只可能使用选择列或表达式列，而且必须使用每个选择列表达式 \\[6pt]
+        不一定需要 & 如果与聚集函数一起使用列（或表达式），则必须使用 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\begin{dxtips}
+    用group by不能指望他能排好
+\end{dxtips}
+\begin{table}[htbp]
+    \centering
+    \caption{\texttt{ORDER BY} 与 \texttt{GROUP BY} 的区别}
+    \begin{tabular}{p{5.2cm}p{5.2cm}}
+        \toprule
+        \centering \texttt{ORDER BY} & \centering \texttt{GROUP BY} \tabularnewline
+        \midrule
+        对产生的输出排序 & 对行分组，但输出可能不是分组的顺序 \\[6pt]
+        任意列都可以使用（甚至非选择的列也可以使用） & 只可能使用选择列或表达式列，而且必须使用每个选择列表达式 \\[6pt]
+        不一定需要 & 如果与聚集函数一起使用列（或表达式），则必须使用 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
