@@ -329,3 +329,274 @@ HAVING COUNT(*) >= 3;
         \bottomrule
     \end{tabular}
 \end{table}
+\begin{example}
+    select order_num, count(*)as group_line from OrderItems group by order_num
+    这个运行逻辑是先用group by把一个大表切成几个小表也就是组别，这样count什么的都在组内了
+\end{example}
+\begin{example}
+下面是一条 SQL 查询语句，用于查询订购了产品 \texttt{RGAN01} 的顾客编号：
+
+\begin{verbatim}
+SELECT cust_id
+FROM Orders
+WHERE order_num IN (SELECT order_num
+                    FROM OrderItems
+                    WHERE prod_id = 'RGAN01');
+\end{verbatim}
+
+其输出结果为：
+
+\begin{verbatim}
+cust_id
+----------
+1000000004
+1000000005
+\end{verbatim}
+\end{example}
+\begin{dxtips}
+    FROM
+→ WHERE
+→ GROUP BY
+→ HAVING
+→ SELECT
+→ ORDER BY 这里是从两个不同的表里面select并且把第一个的结果当成
+\end{dxtips}
+\begin{example}
+下面这个写法是一个典型错误：
+\begin{lstlisting}[language=SQL]
+SELECT cust_email
+FROM Customers
+WHERE cust_id IN (
+    SELECT order_date, cust_id
+    FROM Orders
+    WHERE order_num IN (
+        SELECT order_num
+        FROM OrderItems
+        WHERE prod_id = 'BR01'
+    )
+);
+\end{lstlisting}
+
+错误原因在于：外层条件是
+\[
+\texttt{cust\_id IN (子查询)}
+\]
+这里左边只有一个值 \(\texttt{cust\_id}\)，因此括号中的子查询必须只返回一列，并且这一列应当能够与 \(\texttt{cust\_id}\) 进行比较。
+
+但是该子查询返回了两列：
+\[
+\texttt{order\_date,\ cust\_id}
+\]
+这就与 \texttt{IN} 的要求不匹配，因此会报错。
+
+正确写法应为：
+\begin{lstlisting}[language=SQL]
+SELECT cust_email
+FROM Customers
+WHERE cust_id IN (
+    SELECT cust_id
+    FROM Orders
+    WHERE order_num IN (
+        SELECT order_num
+        FROM OrderItems
+        WHERE prod_id = 'BR01'
+    )
+);
+\end{lstlisting}
+
+也就是说，当写成
+\begin{lstlisting}[language=SQL]
+某列 IN (子查询)
+\end{lstlisting}
+时，子查询通常只能返回一列；如果返回多列，就会出现这种典型错误。
+\end{example}
+\begin{note}
+    SQL 里子查询常见有三种位置：
+	1.	写在 WHERE 后面：拿来筛选
+	2.	写在 FROM 后面：拿来当一张临时表
+	3.	写在 SELECT 后面：拿来给每一行补一个值
+    select后面可以是表中没有的也就是处理过的新添加的
+\end{note}
+\begin{example}
+下面的查询用于返回每个顾客的顾客 ID 以及其已订购商品的总金额，并按总金额从大到小排序：
+\begin{lstlisting}[language=SQL]
+SELECT cust_id,
+       (SELECT SUM(quantity * item_price)
+        FROM OrderItems
+        WHERE order_num IN (SELECT order_num
+                            FROM Orders
+                            WHERE Orders.cust_id = Customers.cust_id)) AS total_ordered
+FROM Customers
+ORDER BY total_ordered DESC;
+\end{lstlisting}
+\begin{dxtips}
+    先把最终要输出的 \verb|cust_id| 和 \verb|as total_orders| 写在 \verb|select| 后，这里子句明显是作为计算字段，因为要添加表里面原来没有的东西。所以 \verb|select| 肯定在 \verb|from| 前面。一共需要两步，我们先算总价格，这个是容易想的；但是算总价格这步不能建立起 \verb|orders| 和 \verb|customers| 的相同 id 的映射，因为 \verb|where in| 这种筛选只能里面有一个 \verb|select|，所以还需要一个筛选的 \verb|select|。最后有一个 \verb|as| 的名字就行了，\verb|sum| 的时候就不用有名字。
+\end{dxtips}
+
+\begin{dxtips}[一个顾客可以下好几个订单，每一个订单可以买好几个东西]
+    建立两个表的联系就是 \verb|where A in (select A from ...)|，\(A\) 的位置只能是一个。这里如果要计算 \verb|sum|，就需要知道 \verb|sum| 的是那个名字的所有的数量 \(*\) 价格，所以我们必须要筛选相同 \verb|order_num| 的东西。写出标题话我们就可以知道，算订单总价紧跟着的必须是订单号，筛选订单号紧跟着的必须是顾客 id。可以从侧栏点当前输入，还可以检查这个表里面到底有没有。
+\end{dxtips}
+\section{联结表13/22}
+\begin{dxtips}[意义]
+把信息分解成不同的表，通过共同的值关联。  	•	供应商表：\[
+\text{供应商表: }\verb|vend_id, vend_name|
+\]
+\[
+\text{商品表: }\verb|prod_id, vend_id, prod_name|
+\] 
+\end{dxtips}
+\begin{lstlisting}[language=SQL]
+SELECT vend_name, prod_name, prod_price
+FROM Vendors
+INNER JOIN Products ON Vendors.vend_id = Products.vend_id;
+\end{lstlisting}
+
+\begin{note}
+此语句中的 \verb|SELECT| 与前面的 \verb|SELECT| 语句相同，但 \verb|FROM| 子句不同。这里，两个表之间的关系是以 \verb|INNER JOIN| 指定的部分 \verb|FROM| 子句。在使用这种语法时，联结条件用特定的 \verb|ON| 子句而不是 \verb|WHERE| 子句给出。传递给 \verb|ON| 的实际条件与传递给 \verb|WHERE| 的相同。
+\end{note}
+\begin{dxtips}
+    inner join A on B很清晰的会知道是A和B做联结	•	WHERE：逻辑上像先全组合再筛
+	•	INNER JOIN：逻辑上更像“按条件配对”
+
+\end{dxtips}
+\begin{example}
+在多表联结中，若某个字段名在多个表中都出现过，就需要写成“表名.\allowbreak 字段名”的形式，以消除歧义。例如这里的 \verb|order_num| 在 \verb|Orders| 表和 \verb|OrderItems| 表中都可能出现，因此应写成 \verb|Orders.order_num|。
+
+另外，若在 \verb|SELECT| 中使用了聚合函数 \verb|sum(...)|，那么凡是同时出现但没有被聚合的字段，都必须写在 \verb|GROUP BY| 中。所以 \verb|cust_name| 和 \verb|Orders.order_num| 都要分组。
+
+对应的 SQL 语句为：
+\begin{lstlisting}[language=SQL]
+select cust_name, Orders.order_num,
+       sum(quantity*item_price) as ordertotal
+from Customers
+inner join Orders
+on Customers.cust_id = Orders.cust_id
+inner join OrderItems
+on OrderItems.order_num = Orders.order_num
+group by cust_name, Orders.order_num;
+\end{lstlisting}
+\end{example}
+\begin{definition}[等联结]
+若两个表进行联结时，联结条件是两个字段之间的相等关系，即使用等号 \(=\) 来建立匹配关系，则这种联结称为\textbf{等联结}。
+
+例如：
+$
+\texttt{Customers.cust\_id = Orders.cust\_id}
+$
+和
+$
+\texttt{Orders.order\_num = OrderItems.order\_num}
+$
+都是等联结条件。
+\end{definition}
+\begin{dxtips}
+    有group by再想筛选group by也就是分组后产生的结果就要用having，where只能在group by前面筛选分组前的内容
+\end{dxtips}
+\begin{example}
+下面语句用于查询订单总额不少于 1000 的顾客编号和订单编号：
+\begin{lstlisting}[language=SQL]
+select Orders.cust_id, OrderItems.order_num
+from Orders
+inner join OrderItems
+on Orders.order_num = OrderItems.order_num
+group by Orders.cust_id, OrderItems.order_num
+having sum(item_price * quantity) >= 1000;
+\end{lstlisting}
+
+常见错误如下：
+\begin{enumerate}
+    \item 将 \texttt{OrderItems} 误写为 \texttt{OrdersItems}。
+    \item 将聚合条件写在 \texttt{where} 中，而不是写在 \texttt{having} 中。
+    \item \texttt{select} 中出现的非聚合列没有全部写入 \texttt{group by}。
+    \item 多表查询时，对重名字段没有写成 \texttt{表名.字段名}，从而产生歧义。
+\end{enumerate}
+\end{example}
+\begin{lstlisting}[language=SQL]
+SELECT cust_name, cust_contact
+FROM Customers AS C, Orders AS O, OrderItems AS OI
+WHERE C.cust_id = O.cust_id
+  AND OI.order_num = O.order_num
+  AND prod_id = 'RGAN01';
+\end{lstlisting}
+这样就可以缩短表头的书写。
+\begin{note}[自联结]
+    可以，因为这里不是两个不同的 \texttt{Customers} 表，而是同一张表起了两个别名：
+\begin{itemize}
+    \item \texttt{Customers AS c1}
+    \item \texttt{Customers AS c2}
+\end{itemize}
+
+相当于把同一张表“当成两份来看”。
+
+这样做是为了让表自己和自己比较，这种连接称为\textbf{自联结}（self join）。
+
+这句查询语句的含义是：
+\begin{itemize}
+    \item \texttt{c2.cust\_contact = 'Jim Jones'}：先找到联系人是 \texttt{Jim Jones} 的那一行；
+    \item 再利用 \texttt{c1.cust\_name = c2.cust\_name}，找到与他姓名相同的其他顾客。
+\end{itemize}
+
+所以，\texttt{c1} 和 \texttt{c2} 只是同一张表在查询中扮演的两个不同角色，并不冲突。
+\end{note}
+\begin{note}
+ \begin{enumerate}
+     \item   INNER JOIN 只保留能匹配上的行。
+     \item OUTER JOIN 除了匹配上的行，还会保留没匹配上的一边或两边。也就是会给没有的补一个null，必须前面有right或者left说明他到底补那边。还有full就是两边都补
+ \end{enumerate}  
+  
+
+\end{note}
+customer left outer join 就是
+左侧也就customer全部填满
+select是倒数第二优先级运行只比order by高一级
+\section{union}
+\begin{dxtips}
+    union可以连接两个select但是两个的select内容必须格式相同。union自动删除重复的项。如果想要重复的项就union all，如果排序order by必须在最后一个select的最后面
+\end{dxtips}
+\begin{example}
+在 SQL 中，\texttt{UNION} 要求两个 \texttt{SELECT} 的结果结构兼容，即列数相同，且对应位置的数据类型可以匹配；它并不要求两边查询的是同一种含义的数据。
+
+例如下面是可以的：
+\begin{lstlisting}[language=SQL]
+SELECT prod_name
+FROM Products
+UNION
+SELECT cust_name
+FROM Customers;
+\end{lstlisting}
+
+因为两边都只返回 1 列，且通常都是字符型。这个的效果就是两个合成一列
+
+但下面不可以：
+\begin{lstlisting}[language=SQL]
+SELECT prod_name, prod_id
+FROM Products
+UNION
+SELECT cust_name
+FROM Customers;
+\end{lstlisting}
+
+因为左边返回 2 列，而右边只返回 1 列，列数不一致。
+\end{example}
+\begin{dxtips}
+    insert into 要插的表加（表的表头） value（）
+    如果没有的值要用null填充。
+    insert select用法自动从新表select东西合并到老表里面
+\end{dxtips}
+creat 新表 select
+\begin{dxtips}[update]
+    要更新的表的名字，要更新的内容，还有用于更新具体地方的条件。update+set。update可以用子查询
+\end{dxtips}
+\begin{dxtips}[delete]
+    可以删除特定的行和删除所有的行，他是删除行删除不了列
+\end{dxtips}
+ \begin{enumerate}
+    \item 第一个问题是最开始的语句写法不对，\texttt{SET} 后面不能只写 \texttt{UPPER(vend\_state)}，而要写成
+    \[
+    \texttt{vend\_state = UPPER(vend\_state)}
+    \]
+
+    \item 第二个问题是没有写 \texttt{WHERE} 条件，在 MySQL 的安全更新模式下，直接更新整张表会被禁止。
+
+    \item 第三个问题是后来虽然加了 \texttt{WHERE vend\_state IS NOT NULL}，但 \texttt{vend\_state} 不是键列（key column），所以在安全模式下仍然不能执行。
+\end{enumerate}
