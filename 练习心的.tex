@@ -1,0 +1,61 @@
+\chapter{练习}
+\section{子查询}
+子查询就是创造一个池子以前要写a在1，2，3里面选但是用另一个表表里就是1，2，3。就用select from这个表直接返回1，2，3。
+当然作为比较条件也可以是大余小余找第二大的去掉最大的就行。
+\begin{lstlisting}[language=SQL]
+SELECT MAX(Salary) AS SecondHighestSalary
+FROM Employee
+WHERE Salary < (SELECT MAX(Salary) FROM Employee);
+\end{lstlisting}
+\begin{definition}[SQL 自定义函数]
+自定义函数（User-Defined Function）是用户在数据库中创建的可复用逻辑单元，语法为：
+
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+CREATE FUNCTION 函数名(参数名 参数类型, ...) RETURNS 返回类型
+BEGIN
+    -- 函数体
+    RETURN 返回值;
+END
+\end{lstlisting}
+
+与存储过程的区别在于：函数必须有返回值，且可以直接嵌套在 \texttt{SELECT} 语句中使用。
+\end{definition}
+
+\begin{definition}[SQL 循环]
+循环只能写在存储过程或自定义函数内部，MySQL 提供三种循环结构：
+
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+-- 1. LOOP：手动控制退出
+loop1: LOOP
+    IF 条件 THEN LEAVE loop1; END IF;
+END LOOP;
+
+-- 2. WHILE：先判断条件再执行
+WHILE 条件 DO
+    -- 执行内容
+END WHILE;
+
+-- 3. REPEAT：先执行再判断，至少执行一次
+REPEAT
+    -- 执行内容
+UNTIL 条件 END REPEAT;
+\end{lstlisting}
+
+\end{definition}
+
+
+\begin{example}*[177第n高薪水]
+    \begin{lstlisting}[language=SQL]
+CREATE FUNCTION getNthHighestSalary(N INT) RETURNS INT
+BEGIN
+    SET N = N - 1;
+    RETURN (
+        SELECT DISTINCT Salary
+        FROM Employee
+        ORDER BY Salary DESC
+        LIMIT 1 OFFSET N
+    );
+END
+\end{lstlisting}
+\end{example}
+\section{JOIN}

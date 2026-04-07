@@ -587,10 +587,18 @@ creat 新表 select
 \begin{dxtips}[update]
     要更新的表的名字，要更新的内容，还有用于更新具体地方的条件。update+set。update可以用子查询
 \end{dxtips}
+\begin{lstlisting}[language=SQL]
+UPDATE 表名
+SET 列名 = 新值
+WHERE 条件;
+\end{lstlisting}
 \begin{dxtips}[delete]
     可以删除特定的行和删除所有的行，他是删除行删除不了列
 \end{dxtips}
- \begin{enumerate}
+ \begin{lstlisting}[language=SQL]
+DELETE FROM 表名
+WHERE 条件;
+\end{lstlisting}\begin{enumerate}
     \item 第一个问题是最开始的语句写法不对，\texttt{SET} 后面不能只写 \texttt{UPPER(vend\_state)}，而要写成
     \[
     \texttt{vend\_state = UPPER(vend\_state)}
@@ -600,3 +608,81 @@ creat 新表 select
 
     \item 第三个问题是后来虽然加了 \texttt{WHERE vend\_state IS NOT NULL}，但 \texttt{vend\_state} 不是键列（key column），所以在安全模式下仍然不能执行。
 \end{enumerate}
+\begin{dxtips}
+    create table就是后面跟着表名字然后(
+    表头 +数据类型+能否是null值，可以用default规定默认值，drop table就能删除整个表
+    )
+\end{dxtips}
+\begin{lstlisting}[language=SQL]
+CREATE TABLE 表名
+(
+    列名1  数据类型  约束,
+    列名2  数据类型  DEFAULT 默认值
+);
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL]
+DROP TABLE 表名;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL]
+ALTER TABLE 表名
+ADD 列名 数据类型;
+\end{lstlisting}
+
+\begin{lstlisting}[language=SQL]
+ALTER TABLE 表名
+DROP COLUMN 列名;
+\end{lstlisting}
+\begin{dxtips}
+    所以view就相当于一个加工好的东西，如果需要建新的或者覆盖只能删除了在建
+\end{dxtips}
+假设不想让别人看到 \texttt{prod\_desc}，可以建一个视图只暴露三列：
+
+\begin{lstlisting}[language=SQL]
+CREATE VIEW ProductsPublic AS
+SELECT prod_id, prod_name, prod_price
+FROM Products;
+\end{lstlisting}
+
+以后查数据只需：
+
+\begin{lstlisting}[language=SQL]
+SELECT * FROM ProductsPublic;
+\end{lstlisting}
+
+\texttt{prod\_desc} 对用户完全不可见。若需简化重复查询，例如常用"价格超过 10 的产品"，可建视图：
+
+\begin{lstlisting}[language=SQL]
+CREATE VIEW ExpensiveProducts AS
+SELECT prod_name, prod_price
+FROM Products
+WHERE prod_price > 10;
+\end{lstlisting}
+
+以后直接查询该视图即可，无需每次重写 \texttt{WHERE} 条件：
+
+\begin{lstlisting}[language=SQL]
+SELECT * FROM ExpensiveProducts;
+\end{lstlisting}
+\begin{example}[JOIN 视图]
+创建仅含下过单顾客的视图：
+\begin{lstlisting}[language=SQL]
+CREATE VIEW CustomersWithOrders AS
+SELECT Customers.*, Orders.order_num, Orders.order_date
+FROM Customers
+JOIN Orders ON Customers.cust_id = Orders.cust_id;
+\end{lstlisting}
+常见错误：\texttt{JOIN} 后漏写 \texttt{ON}；用 \texttt{SELECT *} 导致 \texttt{cust\_id} 重复（Error 1060）；重建视图前未执行 \texttt{DROP VIEW}（Error 1050）。注意 \texttt{INNER JOIN} 已自动过滤未下单顾客，无需额外 \texttt{WHERE}。
+\end{example}
+
+\begin{example}[计算列视图]
+创建含总价计算列的视图：
+\begin{lstlisting}[language=SQL]
+CREATE VIEW OrderItemsExpanded AS
+SELECT order_num, prod_id, quantity, item_price,
+       quantity*item_price AS expanded_price
+FROM OrderItems;
+\end{lstlisting}
+常见错误：在视图定义中写 \texttt{ORDER BY}，MySQL 不保证其生效，应在查询视图时再加排序。视图可直接存储计算列，避免每次查询重复计算。
+\end{example}
