@@ -686,3 +686,71 @@ FROM OrderItems;
 \end{lstlisting}
 常见错误：在视图定义中写 \texttt{ORDER BY}，MySQL 不保证其生效，应在查询视图时再加排序。视图可直接存储计算列，避免每次查询重复计算。
 \end{example}
+\section{高级用法}
+\begin{definition}[存储过程]
+存储过程（Stored Procedure）是一组预编译的SQL语句集合，存储在数据库中可反复调用，语法为：
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+CREATE PROCEDURE 过程名(参数)
+BEGIN
+    -- 过程体
+END;
+
+-- 调用
+CALL 过程名(参数);
+\end{lstlisting}
+与函数的区别在于：存储过程无需返回值，不能嵌套在 \texttt{SELECT} 中使用。
+\end{definition}
+
+\begin{definition}[事务处理]
+事务处理（Transaction）是一组SQL操作的集合，要么全部执行成功提交，要么全部回滚撤销，保证数据的一致性。核心语句为：
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+START TRANSACTION;  -- 开始事务
+COMMIT;             -- 提交（全部成功则执行）
+ROLLBACK;           -- 回滚（出错则撤销所有操作）
+\end{lstlisting}
+事务具有四个基本性质（ACID）：原子性（Atomicity）、一致性（Consistency）、隔离性（Isolation）、持久性（Durability）。
+\end{definition}
+
+\begin{definition}[游标]
+游标（Cursor）是一种数据库对象，用于逐行处理查询结果集，语法为：
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+DECLARE 游标名 CURSOR FOR SELECT语句;
+OPEN 游标名;
+FETCH 游标名 INTO 变量名;
+CLOSE 游标名;
+\end{lstlisting}
+游标通常在存储过程中使用，适用于需要对结果集逐行操作的场景。
+\end{definition}
+
+\begin{definition}[约束]
+约束（Constraint）是对表中数据的限制规则，常见类型如下：
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+PRIMARY KEY,          -- 主键，唯一标识每一行
+FOREIGN KEY,          -- 外键，保证引用完整性
+UNIQUE,               -- 唯一约束，列值不可重复
+NOT NULL,             -- 非空约束
+CHECK (条件)          -- 检查约束，限制列的取值范围
+\end{lstlisting}
+\end{definition}
+
+\begin{definition}[索引]
+索引（Index）是对表中一列或多列的值建立的排序结构，用于加快查询速度，语法为：
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+CREATE INDEX idx_name ON 表名 (列名);
+DROP INDEX idx_name ON 表名;
+\end{lstlisting}
+索引可以提升查询效率，但会降低插入、更新、删除的速度，且占用额外存储空间。
+\end{definition}
+
+\begin{definition}[触发器]
+触发器（Trigger）是在特定事件（\texttt{INSERT}、\texttt{UPDATE}、\texttt{DELETE}）发生时自动执行的SQL语句，语法为：
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+CREATE TRIGGER 触发器名
+AFTER INSERT ON 表名
+FOR EACH ROW
+BEGIN
+    -- 触发时执行的操作
+END;
+\end{lstlisting}
+触发器常用于自动记录日志、维护数据一致性等场景。
+\end{definition}
