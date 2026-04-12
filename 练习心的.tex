@@ -45,35 +45,7 @@ AND a1.activity_type <> a2.activity_type
 WHERE a2.activity_type = 'end'
 GROUP BY a1.machine_id;
 \end{lstlisting}
-\begin{dxtips}
-    这题我的想法是自己需要行与行之间做差所以先自链接，链接需要end对start 然后其他的id需要一致。然后需要做差也就是end-start也就是a2-a1需要a2对type是end最后groupby machine_id求和
-\end{dxtips}
-\begin{lstlisting}[language=SQL]
-SELECT machine_id,
-       ROUND(AVG(CASE WHEN activity_type = 'end' 
-                      THEN timestamp 
-                      ELSE -timestamp END), 3) AS processing_time
-FROM Activity
-GROUP BY machine_id;
-\end{lstlisting}
-\begin{note}
-\texttt{CASE WHEN} 是 SQL 中的条件表达式，相当于编程语言中的 \texttt{if-else}，可用于 \texttt{SELECT}、\texttt{WHERE}、\texttt{ORDER BY} 等子句中。语法为：
-\begin{lstlisting}[language=SQL]
-CASE WHEN 条件1 THEN 值1
-     WHEN 条件2 THEN 值2
-     ELSE 值3
-END
-\end{lstlisting}
-例如在聚合函数中，将 \texttt{end} 的时间戳取正、\texttt{start} 的时间戳取负，直接用 \texttt{AVG} 即可得到平均运行时间：
-\begin{lstlisting}[language=SQL]
-AVG(CASE WHEN activity_type = 'end' 
-         THEN timestamp 
-         ELSE -timestamp END)
-\end{lstlisting}
-\end{note}
-\begin{dxtips}
-    sql里面的if else语句
-\end{dxtips}
+
 \begin{definition}[交叉连接（CROSS JOIN）]
 交叉连接返回两张表的笛卡尔积，即左表的每一行与右表的每一行两两组合，结果行数为左表行数乘以右表行数。语法为：
 \begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
@@ -123,6 +95,133 @@ GROUP BY e1.id, e1.name
 HAVING COUNT(e2.id) >= 5;
 \end{lstlisting}
 
+
+
+
+
+
+
+
+
+
+
+
+
+\section{函数}
+\begin{dxtips}
+    这题我的想法是自己需要行与行之间做差所以先自链接，链接需要end对start 然后其他的id需要一致。然后需要做差也就是end-start也就是a2-a1需要a2对type是end最后groupby machine_id求和
+\end{dxtips}
+\begin{lstlisting}[language=SQL]
+SELECT machine_id,
+       ROUND(AVG(CASE WHEN activity_type = 'end' 
+                      THEN timestamp 
+                      ELSE -timestamp END), 3) AS processing_time
+FROM Activity
+GROUP BY machine_id;
+\end{lstlisting}
+\begin{note}
+\texttt{CASE WHEN} 是 SQL 中的条件表达式，相当于编程语言中的 \texttt{if-else}，可用于 \texttt{SELECT}、\texttt{WHERE}、\texttt{ORDER BY} 等子句中。语法为：
+\begin{lstlisting}[language=SQL]
+CASE WHEN 条件1 THEN 值1
+     WHEN 条件2 THEN 值2
+     ELSE 值3
+END
+\end{lstlisting}
+例如在聚合函数中，将 \texttt{end} 的时间戳取正、\texttt{start} 的时间戳取负，直接用 \texttt{AVG} 即可得到平均运行时间：
+\begin{lstlisting}[language=SQL]
+AVG(CASE WHEN activity_type = 'end' 
+         THEN timestamp 
+         ELSE -timestamp END)
+\end{lstlisting}
+\end{note}
+\begin{dxtips}
+    sql里面的if else语句
+\end{dxtips}
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+SELECT action,
+       CASE WHEN action = 'confirmed' THEN 1 ELSE 0 END AS is_confirmed
+FROM Confirmations;
+\end{lstlisting}
+\begin{dxtips}
+    action那行出来就是状态比如说time out或者confirmed。然后这个新的列叫is confirmed里面就全是0和1.然后avg就是求平均数，round（avg，3）就是保留三位小数的平均数。和计算函数一样一般放select ，后面。有case就必须有end
+\end{dxtips}
+
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+SELECT s.user_id, IFNULL(stat, 0) AS confirmation_rate
+FROM Signups AS s
+LEFT JOIN (
+    SELECT c.user_id, ROUND(AVG(CASE WHEN action = 'confirmed' 
+                                     THEN 1 ELSE 0 END), 2) AS stat
+    FROM Confirmations AS c
+    GROUP BY c.user_id
+) AS cs ON s.user_id = cs.user_id;
+\end{lstlisting}
+\begin{dxtips}
+    先写子查询表，在用join把signup表和子查询表连起来，要注意的是如果要连必须给新的表起一个名字比如cs，然后ifnull(stat,0)就是给stat位置是null的自动填写是0
+\end{dxtips}
+\section{聚合}
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+SELECT ps.product_id,
+       IFNULL(ROUND(SUM(ps.price * us.units) / SUM(us.units), 2), 0) AS average_price
+FROM UnitsSold AS us
+RIGHT JOIN (SELECT * FROM Prices) AS ps
+ON us.product_id = ps.product_id
+AND us.purchase_date BETWEEN ps.start_date AND ps.end_date
+GROUP BY ps.product_id;
+\end{lstlisting}
+
+\begin{note}
+相较于初始写法，本题做了三处修改：
+\begin{itemize}
+    \item \texttt{JOIN} 改为 \texttt{RIGHT JOIN}：以 \texttt{Prices} 为右表，保留所有产品，即使没有销售记录也会出现在结果中
+    \item 加上 \texttt{IFNULL(..., 0)}：\texttt{RIGHT JOIN} 后没有匹配的产品 \texttt{average\_price} 为 \texttt{NULL}，用 \texttt{IFNULL} 补0
+    \item \texttt{GROUP BY us.product\_id} 改为 \texttt{GROUP BY ps.product\_id}：右表没匹配到的行 \texttt{us.product\_id} 为 \texttt{NULL}，必须按 \texttt{ps.product\_id} 分组才能正确输出所有产品
+\end{itemize}
+\end{note}
+\begin{dxtips}
+    select内容一变化group by就必须变
+\end{dxtips}
+
+
+
+
+\begin{example}
+查询每个项目员工的平均经验年数：
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+SELECT p.project_id, ROUND(AVG(e.experience_years), 2) AS average_years
+FROM Project AS p
+LEFT JOIN Employee AS e ON p.employee_id = e.employee_id
+GROUP BY p.project_id;
+\end{lstlisting}
+
+\textbf{第一步：LEFT JOIN}，按 \texttt{employee\_id} 连接两表，每行变成"项目id + 员工经验年数"：
+\[
+\begin{array}{c|c}
+\texttt{project\_id} & \texttt{experience\_years} \\
+\hline
+1 & 3 \\
+1 & 2 \\
+1 & 1 \\
+2 & 3 \\
+2 & 2 \\
+\end{array}
+\]
+
+\textbf{第二步：GROUP BY project\_id}，按项目分组：
+\[
+\text{project\_id } 1 \to [3,\ 2,\ 1], \quad \text{project\_id } 2 \to [3,\ 2]
+\]
+
+\textbf{第三步：AVG}，对每组求平均：
+\[
+\text{project\_id } 1 \to \frac{3+2+1}{3} = 2.00, \quad \text{project\_id } 2 \to \frac{3+2}{2} = 2.50
+\]
+
+\textbf{第四步：ROUND}，保留两位小数输出。
+\end{example}
+\begin{dxtips}
+    group by和计算的可以不是一个
+\end{dxtips}
 
 
 
