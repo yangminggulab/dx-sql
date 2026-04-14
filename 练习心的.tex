@@ -229,6 +229,127 @@ GROUP BY p.project_id;
 
 
 
+\begin{note}[主要是主键有问题]
+本题的三处易错点：
+第一，\texttt{ROUND} 的位数参数写成 \texttt{0} 而非 \texttt{2}，导致结果无小数；
+第二，子查询统计总用户数时用了 \texttt{COUNT(DISTINCT user\_name)}，应为 \texttt{COUNT(user\_id)}，\texttt{user\_name} 不是主键，用错列会导致分母计算错误；
+第三，\texttt{Register} 表的主键是 \texttt{(contest\_id, user\_id)} 组合，本身不会重复，\texttt{COUNT} 时无需加 \texttt{DISTINCT}。
+\end{note}
+\begin{dxtips}
+    主键不能是null不能重复可以唯一识别
+    
+\end{dxtips}
+
+
+\begin{note}
+MySQL 中，条件表达式（比如 \texttt{rating < 3}）直接放在数值计算里，会自动返回 \texttt{1}（真）或 \texttt{0}（假）。
+
+例如：
+\begin{lstlisting}[language=SQL]
+SELECT rating < 3 FROM Queries;
+\end{lstlisting}
+结果就是一列 0 和 1。
+
+所以 \texttt{AVG(rating < 3)} 等价于：
+\begin{lstlisting}[language=SQL]
+SUM(CASE WHEN rating < 3 THEN 1 ELSE 0 END) / COUNT(*)
+\end{lstlisting}
+
+这是 MySQL 特有的行为，标准 SQL 和其他数据库（如 PostgreSQL、SQL Server）不支持，要用 \texttt{CASE WHEN} 才行。力扣默认 MySQL 所以能用，但面试手写 SQL 最好还是写 \texttt{CASE WHEN}，更通用。
+\end{note}
+\begin{definition}[DATE\_FORMAT 函数]
+\texttt{DATE\_FORMAT(date, format)} 将日期按指定格式转换为字符串，常用格式符如下：
+\begin{itemize}
+    \item \texttt{\%Y}：四位年份，如 \texttt{2019}
+    \item \texttt{\%m}：两位月份，如 \texttt{01}
+    \item \texttt{\%d}：两位日期，如 \texttt{07}
+\end{itemize}
+例如提取年月：
+\begin{lstlisting}[language=SQL]
+SELECT DATE_FORMAT(trans_date, '%Y-%m') AS month FROM Transactions;
+\end{lstlisting}
+结果将 \texttt{2019-01-07} 转换为 \texttt{2019-01}，常用于按月分组：
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+GROUP BY DATE_FORMAT(trans_date, '%Y-%m')
+\end{lstlisting}
+\end{definition}
+\begin{lstlisting}[language=SQL]
+SELECT DATE_FORMAT(trans_date, '%Y-%m') AS month,
+       country,
+       COUNT(state) AS trans_count,
+       SUM(amount) AS trans_total_amount,
+       SUM(state = 'approved') AS approved_count,
+       SUM(CASE WHEN state = 'approved' THEN amount ELSE 0 END) AS approved_total_amount
+FROM Transactions
+GROUP BY country, month;
+\end{lstlisting}
+\begin{dxtips}
+    sum(state='approved')自动能给state赋值布尔值是是1，不是赋0，然后就可以sum。然后case 后面要跟着when，then 后面也可以写变量名
+\end{dxtips}
+\begin{note}
+两者本质不同：
+\begin{itemize}
+    \item \texttt{SUM(state='approved')}：利用 MySQL 把布尔表达式自动转成 0/1，只能用于\textbf{计数}。
+    \item \texttt{SUM(CASE WHEN state='approved' THEN amount ELSE 0 END)}：\texttt{THEN} 后面跟的是真实字段值 \texttt{amount}，可以是任意数值，用于\textbf{按条件求和}。
+\end{itemize}
+所以不能混用——\texttt{SUM(state='approved' * amount)} 这种写法是错的，布尔值和字段值是两回事，必须用 \texttt{CASE WHEN} 才能在条件成立时取字段值。
+\end{note}
+\begin{definition}[MIN / MAX 函数]
+\texttt{MIN} 和 \texttt{MAX} 是聚合函数，可作用于数值、字符串和日期类型。
+\begin{itemize}
+    \item \texttt{MIN(col)}：返回该列的最小值，用于日期时返回最早日期
+    \item \texttt{MAX(col)}：返回该列的最大值，用于日期时返回最晚日期
+\end{itemize}
+MySQL 中日期按 \texttt{YYYY-MM-DD} 格式存储，从左到右依次比较年、月、日，因此 \texttt{MIN}、\texttt{MAX}、\texttt{>}、\texttt{<} 对日期均可直接使用。例如：
+\begin{lstlisting}[language=SQL]
+SELECT customer_id, MIN(order_date) AS first_order_date
+FROM Delivery
+GROUP BY customer_id;
+\end{lstlisting}
+返回每位顾客最早的下单日期，即首次订单日期。
+\end{definition}
+
+
+
+\begin{note}
+\texttt{WHERE order\_date IN (子查询)} 中子查询返回的是每个顾客的最早日期，但如果两个不同顾客恰好在同一天下了首次订单，\texttt{IN} 会把两个人的那天所有订单都选进来，不只是首次订单那一行。更安全的写法是用 \texttt{(customer\_id, order\_date)} 组合匹配：
+\begin{lstlisting}[language=SQL]
+SELECT ROUND(AVG(order_date = customer_pref_delivery_date) * 100, 2) 
+       AS immediate_percentage
+FROM Delivery
+WHERE (customer_id, order_date) IN (
+    SELECT customer_id, MIN(order_date)
+    FROM Delivery
+    GROUP BY customer_id
+);
+\end{lstlisting}
+\end{note}
+
+
+
+
+
+\begin{lstlisting}[language=SQL]
+SELECT ROUND(AVG(order_date = customer_pref_delivery_date) * 100, 2) 
+       AS immediate_percentage
+FROM Delivery
+WHERE (customer_id, order_date) IN (
+    SELECT customer_id, order_date
+    FROM Delivery
+    GROUP BY customer_id
+    HAVING order_date = MIN(order_date)
+);
+\end{lstlisting}
+\begin{dxtips}
+    having还是不熟练
+\end{dxtips}
+
+
+
+
+
+
+
 
 
 
