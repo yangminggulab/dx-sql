@@ -344,13 +344,56 @@ WHERE (customer_id, order_date) IN (
     having还是不熟练
 \end{dxtips}
 
+\begin{definition}[DATE\_ADD 与 INTERVAL]
+\texttt{DATE\_ADD(date, INTERVAL n unit)} 在日期上加上指定时间间隔，常用单位如下：
+\begin{itemize}
+    \item \texttt{DAY}：天，如加一天
+    \item \texttt{MONTH}：月，如加一个月
+    \item \texttt{YEAR}：年，如加一年
+\end{itemize}
+
+\end{definition}
+
+\begin{example}
+    例如在日期上加一天：
+\begin{lstlisting}[language=SQL]
+SELECT DATE_ADD('2016-03-01', INTERVAL 1 DAY);
+-- 结果：2016-03-02
+\end{lstlisting}
+也可以用减法：
+\begin{lstlisting}[language=SQL]
+SELECT DATE_ADD('2016-03-01', INTERVAL -1 DAY);
+-- 结果：2016-02-29
+\end{lstlisting}
+常用于判断某日期的前后一天是否存在记录：
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+WHERE event_date = DATE_ADD(first_login, INTERVAL 1 DAY)
+\end{lstlisting}
+\end{example}
 
 
-
-
-
-
-
+\begin{dxtips}
+    \begin{itemize}
+  \item 函数名写错了，是 \texttt{DATE\_ADD} 不是 \texttt{add\_date}。
+  \item \texttt{DATE\_ADD(firstdate, INTERVAL 1 DAY)} 里的 \texttt{firstdate} 是刚起的别名，但 MySQL 不允许在同一层 \texttt{SELECT} 里引用刚定义的别名，需要嵌套一层子查询。
+\end{itemize}
+\end{dxtips}
+\begin{lstlisting}[language=SQL]
+SELECT ROUND(
+    COUNT(DISTINCT a1.player_id) / (SELECT COUNT(DISTINCT player_id) FROM Activity),
+    2
+) AS fraction
+FROM Activity AS a1
+JOIN (
+    SELECT player_id, MIN(event_date) AS firstdate
+    FROM Activity
+    GROUP BY player_id
+) AS t ON a1.player_id = t.player_id
+AND a1.event_date = DATE_ADD(t.firstdate, INTERVAL 1 DAY);
+\end{lstlisting}
+\begin{dxtips}
+    今天的错误是太贪心，想少用子查询。首先应该想明白到底要链接几张表。是这样的比如最后满足我们要求的只有一个元素，这个需要count没问题但是一旦进行操作以后最开始的表一定变化了，所有一定需要一个最开始表的子查询也就是(SELECT COUNT(DISTINCT player_id) FROM Activity。除数是一个表，被除数是一个表。求除数再看需要几个表。一个表没法和自己的元素上下判断所以需要自链接弄成横着的。然后筛选条件一定要写在一起DATE_ADD(t.firstdate, INTERVAL 1 DAY);最后在筛选。
+\end{dxtips}
 
 
 
