@@ -392,11 +392,27 @@ JOIN (
 AND a1.event_date = DATE_ADD(t.firstdate, INTERVAL 1 DAY);
 \end{lstlisting}
 \begin{dxtips}
-    今天的错误是太贪心，想少用子查询。首先应该想明白到底要链接几张表。是这样的比如最后满足我们要求的只有一个元素，这个需要count没问题但是一旦进行操作以后最开始的表一定变化了，所有一定需要一个最开始表的子查询也就是(SELECT COUNT(DISTINCT player_id) FROM Activity。除数是一个表，被除数是一个表。求除数再看需要几个表。一个表没法和自己的元素上下判断所以需要自链接弄成横着的。然后筛选条件一定要写在一起DATE_ADD(t.firstdate, INTERVAL 1 DAY);最后在筛选。
+今天的错误是太贪心，想少用子查询。首先应该想明白到底要连接几张表。是这样的，比如最后满足我们要求的只有一个元素，这个需要 \texttt{COUNT} 没问题，但是一旦进行操作以后最开始的表一定变化了，所以一定需要一个最开始表的子查询，也就是 \texttt{(SELECT COUNT(DISTINCT player\_id) FROM Activity)}。除数是一个表，被除数是一个表，求除数再看需要几个表。一个表没法和自己的元素上下判断，所以需要自连接弄成横着的。然后筛选条件一定要写在一起 \texttt{DATE\_ADD(t.firstdate, INTERVAL 1 DAY)}，最后再筛选。
 \end{dxtips}
+\begin{note}
+\texttt{GROUP BY product\_id} 之后每组变成一行，但 \texttt{sale\_date} 这一组里有多个值，MySQL 不知道该显示哪一个，所以不允许直接 \texttt{SELECT}．\texttt{GROUP BY} 之后 \texttt{SELECT} 的列只能是 \texttt{GROUP BY} 里出现的列或聚合函数（\texttt{MIN}、\texttt{MAX}、\texttt{COUNT}、\texttt{SUM}、\texttt{AVG}）．
+\begin{lstlisting}[language=SQL]
+SELECT product_id,
+       COUNT(*) AS 销售次数,
+       MIN(sale_date) AS 最早销售,
+       MAX(sale_date) AS 最晚销售
+FROM Sales
+GROUP BY product_id;
+\end{lstlisting}
+\end{note}
 
-
-
+\begin{note}
+\texttt{WHERE} 后面不能带聚合函数，但 \texttt{HAVING} 可以，因为执行顺序不同：
+\[
+\texttt{FROM} \to \texttt{WHERE} \to \texttt{GROUP BY} \to \texttt{HAVING} \to \texttt{SELECT}
+\]
+\texttt{WHERE} 在 \texttt{GROUP BY} 之前执行，此时还没有分组，聚合函数根本没算出来，所以不能用．\texttt{HAVING} 在 \texttt{GROUP BY} 之后执行，聚合函数已经算好了，所以可以用．
+\end{note}
 
 \section{子查询}
 子查询就是创造一个池子以前要写a在1，2，3里面选但是用另一个表表里就是1，2，3。就用select from这个表直接返回1，2，3。
