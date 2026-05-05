@@ -413,7 +413,219 @@ GROUP BY product_id;
 \]
 \texttt{WHERE} 在 \texttt{GROUP BY} 之前执行，此时还没有分组，聚合函数根本没算出来，所以不能用．\texttt{HAVING} 在 \texttt{GROUP BY} 之后执行，聚合函数已经算好了，所以可以用．
 \end{note}
+\begin{note}
+\textbf{聚合函数的作用域是"组内"，不是"全表"}
 
+一旦有 \lstinline[language=SQL]|GROUP BY|，所有聚合函数（\lstinline[language=SQL]|MAX|、\lstinline[language=SQL]|SUM|、\lstinline[language=SQL]|COUNT| 等）只在\textbf{当前组的行}上计算，不跨组。
+
+\textbf{易错点：} \lstinline[language=SQL]|GROUP BY num| 之后每组已折叠为一行，组内 \lstinline[language=SQL]|num| 全部相同，此时 \lstinline[language=SQL]|MAX(num)| 等于原值，毫无意义。
+
+\textbf{正确做法：}内层分组过滤，外层跨组聚合。
+
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+-- 错误：MAX 只在组内算，等于原值
+SELECT MAX(num)
+FROM MyNumbers
+GROUP BY num
+HAVING COUNT(*) < 2;
+
+-- 正确：子查询先得到候选值，外层再取最大
+SELECT MAX(num)
+FROM (
+    SELECT num
+    FROM MyNumbers
+    GROUP BY num
+    HAVING COUNT(*) < 2
+) t;
+\end{lstlisting}
+\end{note}
+\section{高级查询和链接}
+\begin{note}
+\lstinline[language=SQL]|CASE WHEN| 是 SQL 里的条件判断，相当于 if-else，可放在以下位置：
+\begin{itemize}
+    \item \lstinline[language=SQL]|SELECT| 后面（最常用，生成新列）
+    \item \lstinline[language=SQL]|WHERE| 后面（条件筛选）
+    \item \lstinline[language=SQL]|ORDER BY| 后面（按条件排序）
+    \item \lstinline[language=SQL]|GROUP BY| 后面（按条件分组）
+\end{itemize}
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+CASE 
+    WHEN 条件1 THEN 结果1
+    WHEN 条件2 THEN 结果2
+    ELSE 默认结果
+END
+\end{lstlisting}
+
+\end{note}
+\begin{note}
+三角形判断条件等价于最大边小于另外两边之和：
+\[
+\text{GREATEST}(x,y,z) < x+y+z - \text{GREATEST}(x,y,z)
+\]
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+CASE
+    WHEN GREATEST(x, y, z) < x + y + z - GREATEST(x, y, z)
+    THEN 'Yes'
+    ELSE 'No'
+END AS triangle
+\end{lstlisting}
+\end{note}
+\begin{note}
+\lstinline[language=SQL]|MAX|/\lstinline[language=SQL]|MIN| 是聚合函数，作用于多行之间的比较（跨行），不能用于同一行内多列的比较。\lstinline[language=SQL]|GREATEST|/\lstinline[language=SQL]|LEAST| 是标量函数，作用于同一行内多个值之间的比较（跨列）。
+\end{note}
+\subsection{窗口函数}
+\begin{definition}{窗口函数}{}
+窗口函数在保留原表所有行的基础上，对每一行计算其"窗口"（周围若干行）内的聚合或排序结果，不像 \lstinline[language=SQL]|GROUP BY| 那样折叠行。基本语法为：
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+函数名() OVER (
+    PARTITION BY 分组列   -- 可省略
+    ORDER BY 排序列
+)
+\end{lstlisting}
+常用窗口函数：
+\begin{itemize}
+    \item \lstinline[language=SQL]|LAG(col, n)|：当前行往上第 $n$ 行的值
+    \item \lstinline[language=SQL]|LEAD(col, n)|：当前行往下第 $n$ 行的值
+    \item \lstinline[language=SQL]|RANK()|：当前行的排名（并列跳号）
+    \item \lstinline[language=SQL]|ROW_NUMBER()|：当前行的行号（不跳号）
+\end{itemize}
+\end{definition}
+\begin{note}
+\texttt{OVER (ORDER BY ...)} 中的排序仅作用于窗口函数的计算过程，相当于一张临时工作视图，不影响最终结果的行顺序。执行流程为：
+
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+原表（无序）
+  -> OVER (ORDER BY score DESC)  -- 生成临时排序视图，供窗口函数计算
+  -> 窗口函数在临时视图上计算结果
+  -> 结果贴回原表行，按原表顺序输出
+\end{lstlisting}
+
+
+\end{note}
+\begin{dxtips}
+    窗口函数是自连接的高级替代品，覆盖了自连接的常见用途，同时能表达自连接表达不了的"相邻行"语义，性能也更好。
+\end{dxtips}
+\begin{note}
+\texttt{OVER (ORDER BY ...)} 后可跟多列，逗号分隔，规则与普通 \lstinline[language=SQL]|ORDER BY| 相同。常用窗口函数语义如下：
+
+\begin{itemize}
+    \item \lstinline[language=SQL]|RANK()|：按排序结果给排名，并列则同名次，下一名跳号
+    \item \lstinline[language=SQL]|ROW_NUMBER()|：按排序结果给行号，并列也强制不同，严格连续
+    \item \lstinline[language=SQL]|LAG(col, n)|：当前行在排序视图中，往上第 $n$ 行的 \texttt{col} 值；第一行往上无数据则为 \texttt{NULL}
+    \item \lstinline[language=SQL]|LEAD(col, n)|：当前行在排序视图中，往下第 $n$ 行的 \texttt{col} 值；最后一行往下无数据则为 \texttt{NULL}
+\end{itemize}
+\end{note}
+\begin{dxtips}
+    where在select前面所以不能用select 新造的名字在where里面
+\end{dxtips}
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+select product_id,new_price from Products where( product_id,change_date) in(select product_id,max(change_date)as new
+from Products where change_date < '2019-08-16' group by product_id);
+--然后先把每一个查询需要提供什么想清楚把子查询就留在上面。然后复制来看有没有对齐什么的
+select distinct p1.product_id,ifnull(p2.new_price,10)as price
+from Products p1 left join(
+select product_id,new_price from Products where( product_id,change_date) in(select product_id,max(change_date)as new
+from Products where change_date <= '2019-08-16' group by product_id))as p2
+on p1.product_id=p2.product_id
+\end{lstlisting}
+\begin{dxtips}
+IN 只匹配日期值，不匹配产品,所以如果两个都要匹配得弄成数组形式。把做好的子查询留在上面方便查看哪里有问题。
+\end{dxtips}
+\begin{note}
+普通聚合函数加上 \lstinline[language=SQL]|OVER| 即变为窗口函数，不折叠行，每行保留并附上窗口内的聚合结果。
+
+\begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
+SUM()   OVER ()
+AVG()   OVER ()
+MAX()   OVER ()
+MIN()   OVER ()
+COUNT() OVER ()
+\end{lstlisting}
+
+例如 \lstinline[language=SQL]|SUM(weight) OVER (ORDER BY turn)| 表示按 \lstinline[language=SQL]|turn| 顺序累计求和，每行得到的是"到当前行为止所有人的体重总和"。
+\end{note}
+\begin{lstlisting}[language=SQL]
+SELECT person_name
+FROM (
+    SELECT person_name,
+           SUM(weight) OVER (ORDER BY turn) AS total
+    FROM Queue
+) AS f
+WHERE f.total <= 1000
+ORDER BY total DESC
+LIMIT 1;
+\end{lstlisting}
+
+
+
+但是为了追求运行效率还是
+leftjoin一个你需要所有元素的基础表比较好。
+
+\begin{definition}[\texttt{LEFT JOIN} 强制保留分类]
+当 \texttt{GROUP BY} 无法保证所有分类出现时，先用 \texttt{UNION ALL} 构造枚举模板表作为左表，再 \texttt{LEFT JOIN} 实际统计结果，缺失分类得到 \texttt{NULL}，用 \texttt{COALESCE} 转为 0。
+\begin{lstlisting}[language=SQL]
+SELECT category, COALESCE(accounts_count, 0) AS accounts_count
+FROM (
+    SELECT 'Low Salary'     AS category UNION ALL
+    SELECT 'Average Salary' AS category UNION ALL
+    SELECT 'High Salary'    AS category
+) AS categories
+LEFT JOIN (
+    SELECT 
+        CASE 
+            WHEN income < 20000                 THEN 'Low Salary'
+            WHEN income BETWEEN 20000 AND 50000 THEN 'Average Salary'
+            ELSE                                     'High Salary'
+        END AS category,
+        COUNT(*) AS accounts_count
+    FROM Accounts
+    GROUP BY category
+) AS counts USING (category);
+\end{lstlisting}
+\end{definition}
+\begin{solution}
+按新 $id$ 升序返回每两个连续学生的交换结果。
+
+\begin{lstlisting}[language=SQL]
+SELECT 
+    CASE 
+        WHEN id % 2 = 1 AND id = (SELECT MAX(id) FROM Seat) THEN id
+        WHEN id % 2 = 1 THEN id + 1
+        ELSE id - 1
+    END AS id,
+    student
+FROM Seat
+ORDER BY id;
+\end{lstlisting}
+
+\begin{note}
+\texttt{CASE WHEN} 按分支顺序逐一判断，匹配即停止，因此第一个条件必须是最特殊的情形。本题中须先排除"最后一个奇数行"这一特例，再处理一般奇数行；若将两个条件对调，最后一行会错误地执行 $id+1$，导致结果越界。
+\end{note}
+\end{solution}
+\begin{dxtips}
+    这个题的关键就是通过调整id来调整名单
+\end{dxtips}
+\subsection{union all}
+\begin{definition}[\texttt{UNION ALL}]
+将多个 \texttt{SELECT} 语句的结果集纵向拼接，要求各子查询的列数与对应列的数据类型一致。
+\begin{lstlisting}[language=SQL]
+SELECT col1, col2 FROM table1
+UNION ALL
+SELECT col1, col2 FROM table2;
+\end{lstlisting}
+\texttt{UNION ALL} 保留所有行（含重复）；\texttt{UNION} 额外执行去重，性能较差。列名以第一个 \texttt{SELECT} 为准。
+\end{definition}
+想把两个结果搜好了再竖着拼起来最后输出\begin{lstlisting}[language=SQL]
+SELECT name AS results
+FROM (
+    结果1
+) AS t1
+UNION ALL
+SELECT title AS results
+FROM (
+    结果2
+) AS t2;
+\end{lstlisting}
 \section{子查询}
 子查询就是创造一个池子以前要写a在1，2，3里面选但是用另一个表表里就是1，2，3。就用select from这个表直接返回1，2，3。
 当然作为比较条件也可以是大余小余找第二大的去掉最大的就行。
