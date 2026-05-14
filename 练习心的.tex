@@ -544,20 +544,91 @@ COUNT() OVER ()
 
 例如 \lstinline[language=SQL]|SUM(weight) OVER (ORDER BY turn)| 表示按 \lstinline[language=SQL]|turn| 顺序累计求和，每行得到的是"到当前行为止所有人的体重总和"。
 \end{note}
+\begin{definition}[帧子句 Frame Clause]
+帧子句用于在窗口函数中精确定义每一行计算时所参考的行范围，完整语法为：
 \begin{lstlisting}[language=SQL]
-SELECT person_name
-FROM (
-    SELECT person_name,
-           SUM(weight) OVER (ORDER BY turn) AS total
-    FROM Queue
-) AS f
-WHERE f.total <= 1000
-ORDER BY total DESC
-LIMIT 1;
+{ROWS | RANGE | GROUPS} BETWEEN <起点> AND <终点>
+\end{lstlisting}
+其中起点与终点可取 \texttt{UNBOUNDED PRECEDING}（分区首行）、\texttt{N PRECEDING}（前$N$行）、\texttt{CURRENT ROW}（当前行）、\texttt{N FOLLOWING}（后$N$行）、\texttt{UNBOUNDED FOLLOWING}（分区末行）。
+\end{definition}
+
+\begin{example}
+\texttt{ROWS}：按物理行数计，计算当前行及其前6行共7行的消费总额。
+\begin{lstlisting}[language=SQL]
+SUM(amount) OVER (
+    ORDER BY visited_on
+    ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+)
+\end{lstlisting}
+\end{example}
+
+\begin{example}
+\texttt{RANGE}：按值范围计，将所有与当前行 \texttt{visited\_on} 相同的行视为同一帧，计算当天及前6天的消费总额。
+\begin{lstlisting}[language=SQL]
+SUM(amount) OVER (
+    ORDER BY visited_on
+    RANGE BETWEEN INTERVAL 6 DAY PRECEDING AND CURRENT ROW
+)
+\end{lstlisting}
+\end{example}
+
+\begin{example}
+\texttt{GROUPS}：按组数计，将 \texttt{ORDER BY} 值相同的行视为一组，计算当前组及前2组的消费总额。
+\begin{lstlisting}[language=SQL]
+SUM(amount) OVER (
+    ORDER BY visited_on
+    GROUPS BETWEEN 2 PRECEDING AND CURRENT ROW
+)
+\end{lstlisting}
+\end{example}
+
+
+\begin{solution}
+按新 $id$ 升序返回每两个连续学生的交换结果。
+
+\begin{lstlisting}[language=SQL]
+SELECT 
+    CASE 
+        WHEN id % 2 = 1 AND id = (SELECT MAX(id) FROM Seat) THEN id
+        WHEN id % 2 = 1 THEN id + 1
+        ELSE id - 1
+    END AS id,
+    student
+FROM Seat
+ORDER BY id;
 \end{lstlisting}
 
-
-
+\begin{note}
+\texttt{CASE WHEN} 按分支顺序逐一判断，匹配即停止，因此第一个条件必须是最特殊的情形。本题中须先排除"最后一个奇数行"这一特例，再处理一般奇数行；若将两个条件对调，最后一行会错误地执行 $id+1$，导致结果越界。
+\end{note}
+\end{solution}
+\begin{dxtips}
+    这个题的关键就是通过调整id来调整名单
+\end{dxtips}
+\begin{definition}[PARTITION BY]
+\texttt{PARTITION BY} 是窗口函数中的分组子句，语法为：
+\begin{lstlisting}[language=SQL]
+函数名() OVER (PARTITION BY col1, col2, ... ORDER BY col3)
+\end{lstlisting}
+与 \texttt{GROUP BY} 的区别在于：\texttt{GROUP BY} 将多行压缩为一行，而 \texttt{PARTITION BY} 在保留所有行的前提下，将数据划分为若干分组，窗口函数在每个分组内部独立计算。不指定 \texttt{PARTITION BY} 时，窗口函数的计算范围为整张表。
+\end{definition}
+\begin{definition}[DENSE\_RANK()]
+\texttt{DENSE\_RANK()} 是窗口函数，用于在分组内对行进行排名，语法为：
+\begin{lstlisting}[language=SQL]
+DENSE_RANK() OVER (PARTITION BY col1 ORDER BY col2 DESC)
+\end{lstlisting}
+与 \texttt{RANK()} 的区别在于：并列时不跳过后续排名。例如两行并列第2，\texttt{RANK()} 下一名为第4，\texttt{DENSE\_RANK()} 下一名为第3。
+\end{definition}
+\subsection{union all}
+\begin{definition}[\texttt{UNION ALL}]
+将多个 \texttt{SELECT} 语句的结果集纵向拼接，要求各子查询的列数与对应列的数据类型一致。
+\begin{lstlisting}[language=SQL]
+SELECT col1, col2 FROM table1
+UNION ALL
+SELECT col1, col2 FROM table2;
+\end{lstlisting}
+\texttt{UNION ALL} 保留所有行（含重复）；\texttt{UNION} 额外执行去重，性能较差。列名以第一个 \texttt{SELECT} 为准。
+\end{definition}
 但是为了追求运行效率还是
 leftjoin一个你需要所有元素的基础表比较好。
 
@@ -583,38 +654,6 @@ LEFT JOIN (
 ) AS counts USING (category);
 \end{lstlisting}
 \end{definition}
-\begin{solution}
-按新 $id$ 升序返回每两个连续学生的交换结果。
-
-\begin{lstlisting}[language=SQL]
-SELECT 
-    CASE 
-        WHEN id % 2 = 1 AND id = (SELECT MAX(id) FROM Seat) THEN id
-        WHEN id % 2 = 1 THEN id + 1
-        ELSE id - 1
-    END AS id,
-    student
-FROM Seat
-ORDER BY id;
-\end{lstlisting}
-
-\begin{note}
-\texttt{CASE WHEN} 按分支顺序逐一判断，匹配即停止，因此第一个条件必须是最特殊的情形。本题中须先排除"最后一个奇数行"这一特例，再处理一般奇数行；若将两个条件对调，最后一行会错误地执行 $id+1$，导致结果越界。
-\end{note}
-\end{solution}
-\begin{dxtips}
-    这个题的关键就是通过调整id来调整名单
-\end{dxtips}
-\subsection{union all}
-\begin{definition}[\texttt{UNION ALL}]
-将多个 \texttt{SELECT} 语句的结果集纵向拼接，要求各子查询的列数与对应列的数据类型一致。
-\begin{lstlisting}[language=SQL]
-SELECT col1, col2 FROM table1
-UNION ALL
-SELECT col1, col2 FROM table2;
-\end{lstlisting}
-\texttt{UNION ALL} 保留所有行（含重复）；\texttt{UNION} 额外执行去重，性能较差。列名以第一个 \texttt{SELECT} 为准。
-\end{definition}
 想把两个结果搜好了再竖着拼起来最后输出\begin{lstlisting}[language=SQL]
 SELECT name AS results
 FROM (
@@ -626,6 +665,31 @@ FROM (
     结果2
 ) AS t2;
 \end{lstlisting}
+\begin{dxtips}
+\begin{itemize}
+    \item \texttt{JOIN}：横着拼，增加列
+    \item \texttt{UNION ALL}：竖着拼，增加行
+\end{itemize}
+\end{dxtips}
+\begin{homework}[602]
+    \begin{note}
+\texttt{UNION ALL} 的好处是可以通过 \texttt{SELECT} 的时候重新赋予名字（列名），两个子查询如果赋予相同的名字，两个表的数据就能上下排列，方便计算。
+
+\begin{lstlisting}[language=SQL]
+SELECT id, SUM(cnt) AS num
+FROM (
+    SELECT requester_id AS id, COUNT(accepter_id) AS cnt
+    FROM RequestAccepted GROUP BY requester_id
+    UNION ALL
+    SELECT accepter_id AS id, COUNT(requester_id) AS cnt
+    FROM RequestAccepted GROUP BY accepter_id
+) AS t
+GROUP BY id
+ORDER BY num DESC
+LIMIT 1
+\end{lstlisting}
+\end{note}
+\end{homework}
 \section{子查询}
 子查询就是创造一个池子以前要写a在1，2，3里面选但是用另一个表表里就是1，2，3。就用select from这个表直接返回1，2，3。
 当然作为比较条件也可以是大余小余找第二大的去掉最大的就行。
@@ -686,3 +750,163 @@ END
 \end{lstlisting}
 \end{example}
 
+\begin{lstlisting}[language=SQL]
+SELECT ROUND(SUM(tiv_2016), 2) AS tiv_2016
+FROM Insurance
+WHERE tiv_2015 IN (
+    SELECT tiv_2015
+    FROM Insurance
+    GROUP BY tiv_2015
+    HAVING COUNT(*) > 1)
+AND (lat, lon) IN (
+    SELECT lat, lon
+    FROM Insurance
+    GROUP BY lat, lon
+    HAVING COUNT(*) < 2)
+\end{lstlisting}
+\begin{dxtips}
+   只要不是特别简单的筛选，有一个筛选用一个子查询。需要对多列组合 \texttt{GROUP BY} 时直接 \texttt{GROUP BY a, b}；但用 \texttt{WHERE} 筛选多列组合时需要 \texttt{(a, b) IN (SELECT a, b ...)}。
+\end{dxtips}
+\section{高级字符串函数 / 正则表达式 / 子句}
+\begin{definition}[CONCAT 函数]
+\texttt{CONCAT(str1, str2, ...)} 将多个字符串首尾连接，返回拼接结果。
+
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+CONCAT('Hello', ' ', 'World')  -- 结果: 'Hello World'
+\end{lstlisting}
+\end{definition}
+
+\begin{definition}[LEFT 函数]
+\texttt{LEFT(str, n)} 从字符串左边起取 $n$ 个字符。
+
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+LEFT('aLiCe', 1)  -- 结果: 'a'
+\end{lstlisting}
+\end{definition}
+
+\begin{definition}[SUBSTRING 函数]
+\texttt{SUBSTRING(str, pos)} 从第 $pos$ 个字符开始取到末尾（MySQL 下标从 1 开始）。也可写作 \texttt{SUBSTRING(str, pos, len)}，此时只取 $len$ 个字符。
+
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+SUBSTRING('aLiCe', 2)     -- 结果: 'LiCe'
+SUBSTRING('aLiCe', 2, 3)  -- 结果: 'LiC'
+\end{lstlisting}
+\end{definition}
+
+\begin{definition}[UPPER / LOWER 函数]
+\texttt{UPPER(str)} 将字符串所有字母转为大写；\texttt{LOWER(str)} 将所有字母转为小写。
+
+\begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
+UPPER('aLiCe')  -- 结果: 'ALICE'
+LOWER('aLiCe')  -- 结果: 'alice'
+\end{lstlisting}
+\end{definition}
+\begin{dxtips}
+    我理解一下这种其实就是如果需要对字符串操作需要先确定范围然后拆分操作完了再拼接回去ledt负责顺序
+    substring负责确定范围，upper Lower负责操作concat负责拼回去
+\end{dxtips}
+
+\begin{dxtips}
+    括号多的我们能一行只能一对括号
+\end{dxtips}
+\begin{lstlisting}[language=SQL]
+SELECT patient_id, patient_name, conditions
+FROM Patients
+WHERE conditions LIKE 'DIAB1%'
+   OR conditions LIKE '% DIAB1%';
+\end{lstlisting}
+\begin{dxtips}
+   LIKE 后面字符串要加 \texttt{''}，然后它是标准的检查。
+
+那个发音像的是 \texttt{SOUNDS LIKE}。
+
+还有开头有 \texttt{DIAB1} 就是后面 \texttt{\%}，如果结尾的话前面需要有空格。
+\end{dxtips}
+\begin{dxtips}
+    delete就是先select 出要的然后加一个否定的结构
+\end{dxtips}
+\begin{note}
+\begin{lstlisting}[language=SQL]
+DELETE p1
+FROM Person p1, Person p2
+WHERE p1.Email = p2.Email
+  AND p1.Id > p2.Id;
+\end{lstlisting}
+
+这里的 \texttt{p1} 不是具体表名，而是 \texttt{Person} 的别名；
+\texttt{FROM Person p1, Person p2} 表示把同一张表拿出来看两次：
+\texttt{Person as p1} 和 \texttt{Person as p2}。
+
+所以 \texttt{DELETE p1} 不是删除一个叫 \texttt{p1} 的表，而是删除
+\texttt{Person} 表里那些在 \texttt{p1} 视角下满足条件的行。
+
+可以理解成：\texttt{p1} 是候选被删除的人，\texttt{p2} 是用来比较的人。
+
+当满足 \texttt{p1.Email = p2.Email} 且 \texttt{p1.Id > p2.Id} 时，
+说明 \texttt{p1} 这一行邮箱重复，而且 \texttt{Id} 更大，所以删除 \texttt{p1}；
+\texttt{p2} 只是参照物，不删除。
+\end{note}
+\begin{dxtips}
+    delete后面只用跟着抽象的表用于确定从那个表删除即可不用具体的列
+\end{dxtips}
+\begin{lstlisting}[language=SQL]
+DELETE FROM Person
+WHERE Id NOT IN (
+    SELECT Id
+    FROM (
+        SELECT MIN(Id) AS Id
+        FROM Person
+        GROUP BY Email
+    ) AS t
+);
+\end{lstlisting}
+\begin{note}
+\begin{lstlisting}[language=SQL]
+SELECT Id FROM (...) AS t
+\end{lstlisting}
+
+相当于先把“要保留的 \texttt{Id} 集合”变成一个临时结果 \texttt{t}，再让外层 \texttt{DELETE} 使用它。
+
+简单记：MySQL 里 \texttt{DELETE} 同一张表时，子查询读自己，通常要再套一层临时表。
+\end{note}
+\begin{definition}[GROUP\_CONCAT]
+GROUP\_CONCAT 是 MySQL 中的字符串聚合函数，用来把同一组中的多行字符串合并成一个字符串。
+
+\begin{lstlisting}[language=SQL]
+GROUP_CONCAT(DISTINCT product ORDER BY product SEPARATOR ',')
+\end{lstlisting}
+
+其中：
+
+\begin{itemize}
+  \item DISTINCT product：先对 product 去重；
+  \item ORDER BY product：在拼接之前，按照 product 的字典序排序；
+  \item SEPARATOR：表示“分隔符”，用来指定拼接时每个字符串之间用什么连接；
+  \item SEPARATOR ','：表示用逗号连接不同的 product。
+\end{itemize}
+
+所以这句话的意思是：把同一组里的 product 去重后，按字典序排列，再用逗号拼成一个字符串。
+\end{definition}
+\begin{dxtips}
+    group_concat就是能把groupby分组以后组里面的字符串起来，如何第一个product的说明连接什么第二个order是按照什么顺序连接，seprator就是用什么分割
+\end{dxtips}
+\begin{definition}[REGEXP 正则匹配]
+REGEXP 是 SQL 中的正则表达式匹配，用来判断一个字符串是否符合某种模式。
+
+\begin{lstlisting}[language=SQL]
+REGEXP '^[A-Za-z][A-Za-z0-9_.-]*@leetcode\\.com$'
+\end{lstlisting}
+
+这句话表示筛选出符合下面格式的邮箱：
+
+\begin{itemize}
+  \item REGEXP：使用正则表达式进行匹配；
+  \item \verb|^|：表示字符串开头；
+  \item \verb|[A-Za-z]|：表示第一个字符必须是字母；
+  \item \verb|[A-Za-z0-9_.-]*|：表示后面可以有字母、数字、下划线、点和横杠，出现 0 次或多次；
+  \item \verb|@leetcode\\.com|：表示必须包含 @leetcode.com，其中点号需要转义；
+  \item \verb|$|：表示字符串结尾。
+\end{itemize}
+
+所以整体意思是：邮箱必须以字母开头，中间可以包含字母、数字、下划线、点和横杠，并且必须以 @leetcode.com 结尾。
+\end{definition}
