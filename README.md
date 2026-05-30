@@ -1,3 +1,36 @@
+## Overall Roadmap
+
+Following the PostgreSQL official tutorial path, SQL first requires understanding tables, rows, and columns, then moves into querying, joins, aggregation, updates, and deletion. This repository is closer to LeetCode SQL practice, so the focus is query expression, joins, functions, aggregation, window functions, and subqueries.
+
+```text
+SQL = using declarative queries to extract answers from relational tables
+|
++-- The central problems
+|   +-- How is data organized in a database?
+|   |   +-- Use tables, rows, columns, keys, and relationships to represent business objects.
+|   +-- How can one table be filtered for the needed information?
+|   |   +-- Use SELECT, WHERE, ORDER BY, LIMIT, and expressions.
+|   +-- How can many tables and many rows be combined into one answer?
+|       +-- Use JOIN, GROUP BY, subqueries, UNION, and window functions.
+|
++-- Tool 1: basic querying
+|   +-- SELECT / WHERE      choose columns and filter rows
+|   +-- Computed fields     produce new results with expressions
+|   +-- String and date functions handle text, time, and formatting
+|   +-- Regex and conditional expressions handle finer matching and branching
+|
++-- Tool 2: multi-table relations
+|   +-- INNER / LEFT JOIN   connect tables by keys
+|   +-- UNION / UNION ALL   combine multiple query results
+|   +-- Subqueries          use one query as another query's condition or source
+|
++-- Tool 3: aggregation and windows
+    +-- Aggregate functions count, sum, avg, max, min
+    +-- GROUP BY            compress rows into grouped results
+    +-- HAVING              filter after grouping
+    +-- Window functions    rank, accumulate, and compute within partitions without collapsing rows
+```
+
 <!-- Author : Dongsheng Deng & Liam Huang-->
 <!-- Program Email: elegantlatex2e@gmail.com -->
 
