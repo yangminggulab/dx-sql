@@ -1,12 +1,16 @@
 \chapter{练习}
 \section{基础}
+\begin{homework}[1683 | 查询 第5题]
 \begin{lstlisting}[language=SQL]
  select tweet_id
 from Tweets
-where length(content) > 15;   
+where length(content) > 15;
 \end{lstlisting}
 数字符串长度是length
+\end{homework}
+
 \section{连接}
+\begin{homework}[1581 | 连接 第3题]
 \begin{lstlisting}[language=SQL]
 SELECT customer_id, COUNT(*) AS count_no_trans
 FROM Visits
@@ -18,6 +22,9 @@ GROUP BY customer_id
 \begin{dxtips}
     where not in其实就相当于是减法也就是交集，不是减具体数字的都可以用where not in。想不明白先列式子是谁减去谁
 \end{dxtips}
+\end{homework}
+
+\begin{homework}[197 | 连接 第4题]
 \begin{lstlisting}[language=SQL]
 SELECT w1.id
 FROM Weather w1
@@ -35,6 +42,9 @@ WHERE w1.temperature > w2.temperature;
 \begin{dxtips}
     遇到需要自己表里面数据互相操作最好先连成一张表，如果不需要所有都连接就用子查询生成表的几列当成一个表在链接。弄成两个表就好操作了
 \end{dxtips}
+\end{homework}
+
+\begin{homework}[1661 | 连接 第5题]
 \begin{lstlisting}[language=SQL]
 SELECT a1.machine_id, ROUND(AVG(a2.timestamp - a1.timestamp), 3) AS processing_time
 FROM Activity AS a1
@@ -45,6 +55,7 @@ AND a1.activity_type <> a2.activity_type
 WHERE a2.activity_type = 'end'
 GROUP BY a1.machine_id;
 \end{lstlisting}
+\end{homework}
 
 \begin{definition}[交叉连接（CROSS JOIN）]
 交叉连接返回两张表的笛卡尔积，即左表的每一行与右表的每一行两两组合，结果行数为左表行数乘以右表行数。语法为：
@@ -53,6 +64,8 @@ SELECT * FROM 表A CROSS JOIN 表B;
 \end{lstlisting}
 例如 \texttt{Students}（4行）与 \texttt{Subjects}（3门课）做交叉连接，得到 $4 \times 3 = 12$ 行，即每个学生与每门课的全部组合。常与 \texttt{LEFT JOIN} 配合使用，用于生成"所有可能组合"后再统计实际数据。
 \end{definition}
+
+\begin{homework}[1280 | 连接 第7题]
 \begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
 SELECT s.student_id, s.student_name, sub.subject_name,
        COUNT(e.student_id) AS attended_exams
@@ -67,10 +80,9 @@ ORDER BY s.student_id, sub.subject_name;
 \begin{dxtips}
  SELECT 里凡是没有被聚合函数（COUNT、SUM、AVG、MAX、MIN）包裹的列，都必须出现在 GROUP BY 里。因为是要select了我就必须知道他要在那个组里面
 \end{dxtips}
+\end{homework}
 
-
-
-
+\begin{homework}[570 | 连接 第8题]
 \begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
 SELECT t.name FROM (
     SELECT e1.name, COUNT(e2.id) AS sum
@@ -94,31 +106,23 @@ JOIN Employee AS e2 ON e1.id = e2.managerId
 GROUP BY e1.id, e1.name
 HAVING COUNT(e2.id) >= 5;
 \end{lstlisting}
-
-
-
-
-
-
-
-
-
-
-
-
+\end{homework}
 
 \section{函数}
+\begin{homework}[1661 | 连接 第5题]
 \begin{dxtips}
     这题我的想法是自己需要行与行之间做差所以先自链接，链接需要end对start 然后其他的id需要一致。然后需要做差也就是end-start也就是a2-a1需要a2对type是end最后groupby machine_id求和
 \end{dxtips}
 \begin{lstlisting}[language=SQL]
 SELECT machine_id,
-       ROUND(AVG(CASE WHEN activity_type = 'end' 
-                      THEN timestamp 
+       ROUND(AVG(CASE WHEN activity_type = 'end'
+                      THEN timestamp
                       ELSE -timestamp END), 3) AS processing_time
 FROM Activity
 GROUP BY machine_id;
 \end{lstlisting}
+\end{homework}
+
 \begin{note}
 \texttt{CASE WHEN} 是 SQL 中的条件表达式，相当于编程语言中的 \texttt{if-else}，可用于 \texttt{SELECT}、\texttt{WHERE}、\texttt{ORDER BY} 等子句中。语法为：
 \begin{lstlisting}[language=SQL]
@@ -129,14 +133,16 @@ END
 \end{lstlisting}
 例如在聚合函数中，将 \texttt{end} 的时间戳取正、\texttt{start} 的时间戳取负，直接用 \texttt{AVG} 即可得到平均运行时间：
 \begin{lstlisting}[language=SQL]
-AVG(CASE WHEN activity_type = 'end' 
-         THEN timestamp 
+AVG(CASE WHEN activity_type = 'end'
+         THEN timestamp
          ELSE -timestamp END)
 \end{lstlisting}
 \end{note}
 \begin{dxtips}
     sql里面的if else语句
 \end{dxtips}
+
+\begin{homework}[1934 | 连接 第9题]
 \begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
 SELECT action,
        CASE WHEN action = 'confirmed' THEN 1 ELSE 0 END AS is_confirmed
@@ -150,7 +156,7 @@ FROM Confirmations;
 SELECT s.user_id, IFNULL(stat, 0) AS confirmation_rate
 FROM Signups AS s
 LEFT JOIN (
-    SELECT c.user_id, ROUND(AVG(CASE WHEN action = 'confirmed' 
+    SELECT c.user_id, ROUND(AVG(CASE WHEN action = 'confirmed'
                                      THEN 1 ELSE 0 END), 2) AS stat
     FROM Confirmations AS c
     GROUP BY c.user_id
@@ -159,7 +165,10 @@ LEFT JOIN (
 \begin{dxtips}
     先写子查询表，在用join把signup表和子查询表连起来，要注意的是如果要连必须给新的表起一个名字比如cs，然后ifnull(stat,0)就是给stat位置是null的自动填写是0
 \end{dxtips}
+\end{homework}
+
 \section{聚合}
+\begin{homework}[1251 | 聚合函数 第2题]
 \begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
 SELECT ps.product_id,
        IFNULL(ROUND(SUM(ps.price * us.units) / SUM(us.units), 2), 0) AS average_price
@@ -181,10 +190,9 @@ GROUP BY ps.product_id;
 \begin{dxtips}
     select内容一变化group by就必须变
 \end{dxtips}
+\end{homework}
 
-
-
-
+\begin{homework}[1075 | 聚合函数 第3题]
 \begin{example}
 查询每个项目员工的平均经验年数：
 \begin{lstlisting}[language=SQL, frame=single, backgroundcolor=\color{white}]
@@ -222,13 +230,9 @@ GROUP BY p.project_id;
 \begin{dxtips}
     group by和计算的可以不是一个
 \end{dxtips}
+\end{homework}
 
-
-
-
-
-
-
+\begin{homework}[1633 | 聚合函数 第4题]
 \begin{note}[主要是主键有问题]
 本题的三处易错点：
 第一，\texttt{ROUND} 的位数参数写成 \texttt{0} 而非 \texttt{2}，导致结果无小数；
@@ -237,10 +241,11 @@ GROUP BY p.project_id;
 \end{note}
 \begin{dxtips}
     主键不能是null不能重复可以唯一识别
-    
+
 \end{dxtips}
+\end{homework}
 
-
+\begin{homework}[1211 | 聚合函数 第5题]
 \begin{note}
 MySQL 中，条件表达式（比如 \texttt{rating < 3}）直接放在数值计算里，会自动返回 \texttt{1}（真）或 \texttt{0}（假）。
 
@@ -257,6 +262,8 @@ SUM(CASE WHEN rating < 3 THEN 1 ELSE 0 END) / COUNT(*)
 
 这是 MySQL 特有的行为，标准 SQL 和其他数据库（如 PostgreSQL、SQL Server）不支持，要用 \texttt{CASE WHEN} 才行。力扣默认 MySQL 所以能用，但面试手写 SQL 最好还是写 \texttt{CASE WHEN}，更通用。
 \end{note}
+\end{homework}
+
 \begin{definition}[DATE\_FORMAT 函数]
 \texttt{DATE\_FORMAT(date, format)} 将日期按指定格式转换为字符串，常用格式符如下：
 \begin{itemize}
@@ -273,6 +280,8 @@ SELECT DATE_FORMAT(trans_date, '%Y-%m') AS month FROM Transactions;
 GROUP BY DATE_FORMAT(trans_date, '%Y-%m')
 \end{lstlisting}
 \end{definition}
+
+\begin{homework}[1193 | 聚合函数 第6题]
 \begin{lstlisting}[language=SQL]
 SELECT DATE_FORMAT(trans_date, '%Y-%m') AS month,
        country,
@@ -294,6 +303,8 @@ GROUP BY country, month;
 \end{itemize}
 所以不能混用——\texttt{SUM(state='approved' * amount)} 这种写法是错的，布尔值和字段值是两回事，必须用 \texttt{CASE WHEN} 才能在条件成立时取字段值。
 \end{note}
+\end{homework}
+
 \begin{definition}[MIN / MAX 函数]
 \texttt{MIN} 和 \texttt{MAX} 是聚合函数，可作用于数值、字符串和日期类型。
 \begin{itemize}
@@ -309,12 +320,11 @@ GROUP BY customer_id;
 返回每位顾客最早的下单日期，即首次订单日期。
 \end{definition}
 
-
-
+\begin{homework}[1174 | 聚合函数 第7题]
 \begin{note}
 \texttt{WHERE order\_date IN (子查询)} 中子查询返回的是每个顾客的最早日期，但如果两个不同顾客恰好在同一天下了首次订单，\texttt{IN} 会把两个人的那天所有订单都选进来，不只是首次订单那一行。更安全的写法是用 \texttt{(customer\_id, order\_date)} 组合匹配：
 \begin{lstlisting}[language=SQL]
-SELECT ROUND(AVG(order_date = customer_pref_delivery_date) * 100, 2) 
+SELECT ROUND(AVG(order_date = customer_pref_delivery_date) * 100, 2)
        AS immediate_percentage
 FROM Delivery
 WHERE (customer_id, order_date) IN (
@@ -325,12 +335,8 @@ WHERE (customer_id, order_date) IN (
 \end{lstlisting}
 \end{note}
 
-
-
-
-
 \begin{lstlisting}[language=SQL]
-SELECT ROUND(AVG(order_date = customer_pref_delivery_date) * 100, 2) 
+SELECT ROUND(AVG(order_date = customer_pref_delivery_date) * 100, 2)
        AS immediate_percentage
 FROM Delivery
 WHERE (customer_id, order_date) IN (
@@ -343,6 +349,7 @@ WHERE (customer_id, order_date) IN (
 \begin{dxtips}
     having还是不熟练
 \end{dxtips}
+\end{homework}
 
 \begin{definition}[DATE\_ADD 与 INTERVAL]
 \texttt{DATE\_ADD(date, INTERVAL n unit)} 在日期上加上指定时间间隔，常用单位如下：
@@ -371,7 +378,7 @@ WHERE event_date = DATE_ADD(first_login, INTERVAL 1 DAY)
 \end{lstlisting}
 \end{example}
 
-
+\begin{homework}[550 | 聚合函数 第8题]
 \begin{dxtips}
     \begin{itemize}
   \item 函数名写错了，是 \texttt{DATE\_ADD} 不是 \texttt{add\_date}。
@@ -394,6 +401,8 @@ AND a1.event_date = DATE_ADD(t.firstdate, INTERVAL 1 DAY);
 \begin{dxtips}
 今天的错误是太贪心，想少用子查询。首先应该想明白到底要连接几张表。是这样的，比如最后满足我们要求的只有一个元素，这个需要 \texttt{COUNT} 没问题，但是一旦进行操作以后最开始的表一定变化了，所以一定需要一个最开始表的子查询，也就是 \texttt{(SELECT COUNT(DISTINCT player\_id) FROM Activity)}。除数是一个表，被除数是一个表，求除数再看需要几个表。一个表没法和自己的元素上下判断，所以需要自连接弄成横着的。然后筛选条件一定要写在一起 \texttt{DATE\_ADD(t.firstdate, INTERVAL 1 DAY)}，最后再筛选。
 \end{dxtips}
+\end{homework}
+
 \begin{note}
 \texttt{GROUP BY product\_id} 之后每组变成一行，但 \texttt{sale\_date} 这一组里有多个值，MySQL 不知道该显示哪一个，所以不允许直接 \texttt{SELECT}．\texttt{GROUP BY} 之后 \texttt{SELECT} 的列只能是 \texttt{GROUP BY} 里出现的列或聚合函数（\texttt{MIN}、\texttt{MAX}、\texttt{COUNT}、\texttt{SUM}、\texttt{AVG}）．
 \begin{lstlisting}[language=SQL]
@@ -413,6 +422,8 @@ GROUP BY product_id;
 \]
 \texttt{WHERE} 在 \texttt{GROUP BY} 之前执行，此时还没有分组，聚合函数根本没算出来，所以不能用．\texttt{HAVING} 在 \texttt{GROUP BY} 之后执行，聚合函数已经算好了，所以可以用．
 \end{note}
+
+\begin{homework}[619 | 排序和分组 第3题]
 \begin{note}
 \textbf{聚合函数的作用域是"组内"，不是"全表"}
 
@@ -439,6 +450,8 @@ FROM (
 ) t;
 \end{lstlisting}
 \end{note}
+\end{homework}
+
 \section{高级查询和链接}
 \begin{note}
 \lstinline[language=SQL]|CASE WHEN| 是 SQL 里的条件判断，相当于 if-else，可放在以下位置：
@@ -449,7 +462,7 @@ FROM (
     \item \lstinline[language=SQL]|GROUP BY| 后面（按条件分组）
 \end{itemize}
 \begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
-CASE 
+CASE
     WHEN 条件1 THEN 结果1
     WHEN 条件2 THEN 结果2
     ELSE 默认结果
@@ -457,6 +470,8 @@ END
 \end{lstlisting}
 
 \end{note}
+
+\begin{homework}[610 | 高级查询和连接 第3题]
 \begin{note}
 三角形判断条件等价于最大边小于另外两边之和：
 \[
@@ -473,6 +488,8 @@ END AS triangle
 \begin{note}
 \lstinline[language=SQL]|MAX|/\lstinline[language=SQL]|MIN| 是聚合函数，作用于多行之间的比较（跨行），不能用于同一行内多列的比较。\lstinline[language=SQL]|GREATEST|/\lstinline[language=SQL]|LEAST| 是标量函数，作用于同一行内多个值之间的比较（跨列）。
 \end{note}
+\end{homework}
+
 \subsection{窗口函数}
 \begin{definition}{窗口函数}{}
 窗口函数在保留原表所有行的基础上，对每一行计算其"窗口"（周围若干行）内的聚合或排序结果，不像 \lstinline[language=SQL]|GROUP BY| 那样折叠行。基本语法为：
@@ -518,6 +535,8 @@ END AS triangle
 \begin{dxtips}
     where在select前面所以不能用select 新造的名字在where里面
 \end{dxtips}
+
+\begin{homework}[1164 | 高级查询和连接 第5题]
 \begin{lstlisting}[language=SQL, backgroundcolor=\color{white}, frame=single]
 select product_id,new_price from Products where( product_id,change_date) in(select product_id,max(change_date)as new
 from Products where change_date < '2019-08-16' group by product_id);
@@ -531,6 +550,8 @@ on p1.product_id=p2.product_id
 \begin{dxtips}
 IN 只匹配日期值，不匹配产品,所以如果两个都要匹配得弄成数组形式。把做好的子查询留在上面方便查看哪里有问题。
 \end{dxtips}
+\end{homework}
+
 \begin{note}
 普通聚合函数加上 \lstinline[language=SQL]|OVER| 即变为窗口函数，不折叠行，每行保留并附上窗口内的聚合结果。
 
@@ -544,6 +565,7 @@ COUNT() OVER ()
 
 例如 \lstinline[language=SQL]|SUM(weight) OVER (ORDER BY turn)| 表示按 \lstinline[language=SQL]|turn| 顺序累计求和，每行得到的是"到当前行为止所有人的体重总和"。
 \end{note}
+
 \begin{definition}[帧子句 Frame Clause]
 帧子句用于在窗口函数中精确定义每一行计算时所参考的行范围，完整语法为：
 \begin{lstlisting}[language=SQL]
@@ -552,6 +574,7 @@ COUNT() OVER ()
 其中起点与终点可取 \texttt{UNBOUNDED PRECEDING}（分区首行）、\texttt{N PRECEDING}（前$N$行）、\texttt{CURRENT ROW}（当前行）、\texttt{N FOLLOWING}（后$N$行）、\texttt{UNBOUNDED FOLLOWING}（分区末行）。
 \end{definition}
 
+\begin{homework}[1321 | 高级查询和连接 第11题]
 \begin{example}
 \texttt{ROWS}：按物理行数计，计算当前行及其前6行共7行的消费总额。
 \begin{lstlisting}[language=SQL]
@@ -581,14 +604,15 @@ SUM(amount) OVER (
 )
 \end{lstlisting}
 \end{example}
+\end{homework}
 
-
+\begin{homework}[626 | 高级查询和连接 第9题]
 \begin{solution}
 按新 $id$ 升序返回每两个连续学生的交换结果。
 
 \begin{lstlisting}[language=SQL]
-SELECT 
-    CASE 
+SELECT
+    CASE
         WHEN id % 2 = 1 AND id = (SELECT MAX(id) FROM Seat) THEN id
         WHEN id % 2 = 1 THEN id + 1
         ELSE id - 1
@@ -605,6 +629,8 @@ ORDER BY id;
 \begin{dxtips}
     这个题的关键就是通过调整id来调整名单
 \end{dxtips}
+\end{homework}
+
 \begin{definition}[PARTITION BY]
 \texttt{PARTITION BY} 是窗口函数中的分组子句，语法为：
 \begin{lstlisting}[language=SQL]
@@ -619,6 +645,7 @@ DENSE_RANK() OVER (PARTITION BY col1 ORDER BY col2 DESC)
 \end{lstlisting}
 与 \texttt{RANK()} 的区别在于：并列时不跳过后续排名。例如两行并列第2，\texttt{RANK()} 下一名为第4，\texttt{DENSE\_RANK()} 下一名为第3。
 \end{definition}
+
 \subsection{union all}
 \begin{definition}[\texttt{UNION ALL}]
 将多个 \texttt{SELECT} 语句的结果集纵向拼接，要求各子查询的列数与对应列的数据类型一致。
@@ -632,6 +659,7 @@ SELECT col1, col2 FROM table2;
 但是为了追求运行效率还是
 leftjoin一个你需要所有元素的基础表比较好。
 
+\begin{homework}[1907 | 高级查询和连接 第7题]
 \begin{definition}[\texttt{LEFT JOIN} 强制保留分类]
 当 \texttt{GROUP BY} 无法保证所有分类出现时，先用 \texttt{UNION ALL} 构造枚举模板表作为左表，再 \texttt{LEFT JOIN} 实际统计结果，缺失分类得到 \texttt{NULL}，用 \texttt{COALESCE} 转为 0。
 \begin{lstlisting}[language=SQL]
@@ -642,8 +670,8 @@ FROM (
     SELECT 'High Salary'    AS category
 ) AS categories
 LEFT JOIN (
-    SELECT 
-        CASE 
+    SELECT
+        CASE
             WHEN income < 20000                 THEN 'Low Salary'
             WHEN income BETWEEN 20000 AND 50000 THEN 'Average Salary'
             ELSE                                     'High Salary'
@@ -654,7 +682,10 @@ LEFT JOIN (
 ) AS counts USING (category);
 \end{lstlisting}
 \end{definition}
-想把两个结果搜好了再竖着拼起来最后输出\begin{lstlisting}[language=SQL]
+\end{homework}
+
+想把两个结果搜好了再竖着拼起来最后输出
+\begin{lstlisting}[language=SQL]
 SELECT name AS results
 FROM (
     结果1
@@ -671,7 +702,8 @@ FROM (
     \item \texttt{UNION ALL}：竖着拼，增加行
 \end{itemize}
 \end{dxtips}
-\begin{homework}[602]
+
+\begin{homework}[602 | 高级查询和连接 第12题]
     \begin{note}
 \texttt{UNION ALL} 的好处是可以通过 \texttt{SELECT} 的时候重新赋予名字（列名），两个子查询如果赋予相同的名字，两个表的数据就能上下排列，方便计算。
 
@@ -690,14 +722,19 @@ LIMIT 1
 \end{lstlisting}
 \end{note}
 \end{homework}
+
 \section{子查询}
 子查询就是创造一个池子以前要写a在1，2，3里面选但是用另一个表表里就是1，2，3。就用select from这个表直接返回1，2，3。
 当然作为比较条件也可以是大余小余找第二大的去掉最大的就行。
+
+\begin{homework}[176 | 高级字符串函数 第4题]
 \begin{lstlisting}[language=SQL]
 SELECT MAX(Salary) AS SecondHighestSalary
 FROM Employee
 WHERE Salary < (SELECT MAX(Salary) FROM Employee);
 \end{lstlisting}
+\end{homework}
+
 \begin{definition}[SQL 自定义函数]
 自定义函数（User-Defined Function）是用户在数据库中创建的可复用逻辑单元，语法为：
 
@@ -734,7 +771,7 @@ UNTIL 条件 END REPEAT;
 
 \end{definition}
 
-
+\begin{homework}[177 | 进阶SQL（非SQL50）]
 \begin{example}*[177第n高薪水]
     \begin{lstlisting}[language=SQL]
 CREATE FUNCTION getNthHighestSalary(N INT) RETURNS INT
@@ -749,7 +786,9 @@ BEGIN
 END
 \end{lstlisting}
 \end{example}
+\end{homework}
 
+\begin{homework}[585 | 高级查询和连接 第13题]
 \begin{lstlisting}[language=SQL]
 SELECT ROUND(SUM(tiv_2016), 2) AS tiv_2016
 FROM Insurance
@@ -767,6 +806,8 @@ AND (lat, lon) IN (
 \begin{dxtips}
    只要不是特别简单的筛选，有一个筛选用一个子查询。需要对多列组合 \texttt{GROUP BY} 时直接 \texttt{GROUP BY a, b}；但用 \texttt{WHERE} 筛选多列组合时需要 \texttt{(a, b) IN (SELECT a, b ...)}。
 \end{dxtips}
+\end{homework}
+
 \section{高级字符串函数 / 正则表达式 / 子句}
 \begin{definition}[CONCAT 函数]
 \texttt{CONCAT(str1, str2, ...)} 将多个字符串首尾连接，返回拼接结果。
@@ -801,6 +842,8 @@ UPPER('aLiCe')  -- 结果: 'ALICE'
 LOWER('aLiCe')  -- 结果: 'alice'
 \end{lstlisting}
 \end{definition}
+
+\begin{homework}[1667 | 高级字符串函数 第1题]
 \begin{dxtips}
     我理解一下这种其实就是如果需要对字符串操作需要先确定范围然后拆分操作完了再拼接回去ledt负责顺序
     substring负责确定范围，upper Lower负责操作concat负责拼回去
@@ -809,6 +852,9 @@ LOWER('aLiCe')  -- 结果: 'alice'
 \begin{dxtips}
     括号多的我们能一行只能一对括号
 \end{dxtips}
+\end{homework}
+
+\begin{homework}[1527 | 高级字符串函数 第2题]
 \begin{lstlisting}[language=SQL]
 SELECT patient_id, patient_name, conditions
 FROM Patients
@@ -822,6 +868,9 @@ WHERE conditions LIKE 'DIAB1%'
 
 还有开头有 \texttt{DIAB1} 就是后面 \texttt{\%}，如果结尾的话前面需要有空格。
 \end{dxtips}
+\end{homework}
+
+\begin{homework}[196 | 高级字符串函数 第3题]
 \begin{dxtips}
     delete就是先select 出要的然后加一个否定的结构
 \end{dxtips}
@@ -865,10 +914,13 @@ WHERE Id NOT IN (
 SELECT Id FROM (...) AS t
 \end{lstlisting}
 
-相当于先把“要保留的 \texttt{Id} 集合”变成一个临时结果 \texttt{t}，再让外层 \texttt{DELETE} 使用它。
+相当于先把"要保留的 \texttt{Id} 集合"变成一个临时结果 \texttt{t}，再让外层 \texttt{DELETE} 使用它。
 
 简单记：MySQL 里 \texttt{DELETE} 同一张表时，子查询读自己，通常要再套一层临时表。
 \end{note}
+\end{homework}
+
+\begin{homework}[1484 | 高级字符串函数 第5题]
 \begin{definition}[GROUP\_CONCAT]
 GROUP\_CONCAT 是 MySQL 中的字符串聚合函数，用来把同一组中的多行字符串合并成一个字符串。
 
@@ -881,7 +933,7 @@ GROUP_CONCAT(DISTINCT product ORDER BY product SEPARATOR ',')
 \begin{itemize}
   \item DISTINCT product：先对 product 去重；
   \item ORDER BY product：在拼接之前，按照 product 的字典序排序；
-  \item SEPARATOR：表示“分隔符”，用来指定拼接时每个字符串之间用什么连接；
+  \item SEPARATOR：表示"分隔符"，用来指定拼接时每个字符串之间用什么连接；
   \item SEPARATOR ','：表示用逗号连接不同的 product。
 \end{itemize}
 
@@ -890,6 +942,9 @@ GROUP_CONCAT(DISTINCT product ORDER BY product SEPARATOR ',')
 \begin{dxtips}
     group_concat就是能把groupby分组以后组里面的字符串起来，如何第一个product的说明连接什么第二个order是按照什么顺序连接，seprator就是用什么分割
 \end{dxtips}
+\end{homework}
+
+\begin{homework}[1517 | 高级字符串函数 第7题]
 \begin{definition}[REGEXP 正则匹配]
 REGEXP 是 SQL 中的正则表达式匹配，用来判断一个字符串是否符合某种模式。
 
@@ -910,3 +965,4 @@ REGEXP '^[A-Za-z][A-Za-z0-9_.-]*@leetcode\\.com$'
 
 所以整体意思是：邮箱必须以字母开头，中间可以包含字母、数字、下划线、点和横杠，并且必须以 @leetcode.com 结尾。
 \end{definition}
+\end{homework}
