@@ -1,4 +1,32 @@
 \chapter{练习}
+\section{总览}
+\dirtree{%
+.1 SQL 取数 = 对表中的「行」做去留、对「列」做计算，再把结果拼起来.
+.2 0\quad 基础对象层（不是目的，是后面四种能力的对象）.
+.3 表 / 行 / 列.
+.4 要点：先想清楚「最后这张表长什么样」，再倒着拆步骤.
+.3 执行顺序：FROM/JOIN $\to$ WHERE $\to$ GROUP BY $\to$ HAVING $\to$ 窗口函数 $\to$ SELECT $\to$ DISTINCT $\to$ ORDER BY.
+.4 要点：窗口函数在 HAVING 之后才算，不能直接在 WHERE/HAVING 里用它的结果，要再套一层子查询.
+.2 能力一\quad 简单筛选：要不要这一行 $\to$ WHERE.
+.3 WHERE\quad 条件不满足就整行丢弃；只能用原始列，不能用聚合/窗口函数.
+.3 HAVING\quad 对 GROUP BY 之后的结果再筛一次；可以用聚合函数.
+.3 子查询当筛选条件\quad WHERE col IN (SELECT \ldots) $\approx$ 集合的交/差.
+.2 能力二\quad 复杂筛选但不删行：给这一行打标签/变形 $\to$ SELECT.
+.3 计算字段\quad 用已有列的表达式算出新列.
+.3 CASE WHEN\quad 条件分支但不丢行：把「判断」变成新列的取值.
+.4 配合聚合：SUM(CASE WHEN \ldots THEN x ELSE 0 END) 按条件统计.
+.3 字符串/日期函数\quad CONCAT/SUBSTRING/DATE\_FORMAT/DATE\_ADD 等单值变换.
+.2 能力三\quad 行与行之间的数据运算：横着拼成一行 $\to$ JOIN.
+.3 INNER/LEFT/RIGHT JOIN\quad 按 key 把两张表的列拼到同一行（增加列）.
+.3 自连接 self join\quad 同一张表的不同行互相对照.
+.3 UNION / UNION ALL\quad 多个查询结果纵向叠在一起（增加行，不是 JOIN）.
+.2 能力四\quad 一列数据内部、跨行的运算：不拼表也能看别的行 $\to$ 窗口函数.
+.3 聚合函数 + GROUP BY\quad 把同列多行压成一个值（会减少行数）.
+.3 窗口函数 函数() OVER (PARTITION BY \ldots ORDER BY \ldots).
+.4 排名：ROW\_NUMBER / RANK / DENSE\_RANK / NTILE（分桶排名）.
+.4 累计：SUM/AVG/COUNT OVER（配合 ROWS/RANGE 帧子句）.
+.4 偏移：LAG / LEAD 取上下行同列的值（自连接的替代品）.
+}
 \section{基础}
 \begin{homework}[1683 | 查询 第5题]
 \begin{lstlisting}[language=SQL]
